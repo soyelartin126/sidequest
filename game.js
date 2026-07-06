@@ -99,18 +99,17 @@ export const addShield = avatar => ({
 // ---- Fondos de la app ----
 // 3 gratis + desbloqueables por nivel. Se guarda en avatar.bg (id).
 export const BACKGROUNDS = [
-  { id: 'crema', name: 'Crema', minLevel: 1, css: '#FFF3E0',
-    dot: '#f0dcc0' },
-  { id: 'menta', name: 'Menta', minLevel: 1, css: '#E4F5EC', dot: '#c9e8d6' },
-  { id: 'cielo', name: 'Cielo', minLevel: 1, css: '#E6F0FA', dot: '#cfe0f2' },
+  { id: 'niebla', name: 'Niebla', minLevel: 1, css: '#F4F5F7', dot: '#E2E6EA' },
+  { id: 'arena', name: 'Arena', minLevel: 1, css: '#FBF3E9', dot: '#EBD9C4' },
+  { id: 'cielo', name: 'Cielo', minLevel: 1, css: '#EAF1FB', dot: '#D3E3F6' },
   { id: 'atardecer', name: 'Atardecer', minLevel: 3,
-    css: 'linear-gradient(160deg,#FFE0C2,#FFC9A3 60%,#FFB38A)', dot: 'rgba(74,44,42,.06)' },
+    css: 'linear-gradient(160deg,#FFE0C2,#F5A45E)', dot: 'rgba(22,38,63,.06)' },
   { id: 'bosque', name: 'Bosque', minLevel: 4,
-    css: 'linear-gradient(160deg,#DDF0D5,#BFE3B3)', dot: 'rgba(74,44,42,.06)' },
-  { id: 'rosa', name: 'Algodón', minLevel: 5,
-    css: 'linear-gradient(160deg,#FCE1EC,#F8C9DD)', dot: 'rgba(74,44,42,.06)' },
-  { id: 'galaxia', name: 'Galaxia', minLevel: 6,
-    css: 'linear-gradient(160deg,#2E2A55,#453C7A)', dot: 'rgba(255,255,255,.10)' },
+    css: 'linear-gradient(160deg,#DDEFE4,#9FCBB0)', dot: 'rgba(22,38,63,.06)' },
+  { id: 'lago', name: 'Lago', minLevel: 5,
+    css: 'linear-gradient(160deg,#DDECFB,#8FBEE8)', dot: 'rgba(22,38,63,.06)' },
+  { id: 'medianoche', name: 'Medianoche', minLevel: 6,
+    css: 'linear-gradient(160deg,#1C2B45,#16263F)', dot: 'rgba(255,255,255,.08)' },
 ]
 export const bgById = id => BACKGROUNDS.find(b => b.id === id) || BACKGROUNDS[0]
 

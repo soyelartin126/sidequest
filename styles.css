@@ -1,11 +1,11 @@
 :root {
-  --bg: #FFF3E0;
+  --bg: #F4F5F7;
   --card: #FFFFFF;
-  --dark: #4A2C2A;
-  --prim: #F4511E;
-  --acc: #FFC93C;
-  --muted: #9B7E6B;
-  --ok: #2A9D8F;
+  --dark: #16263F;
+  --prim: #F5811F;
+  --acc: #FFE0C2;
+  --muted: #6B7480;
+  --ok: #3F7D5A;
   --border: 3px solid var(--dark);
 }
 * { box-sizing: border-box; }
@@ -14,7 +14,7 @@ body {
   background: var(--bg);
   color: var(--dark);
   font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
-  background-image: radial-gradient(#f0dcc0 1.5px, transparent 1.5px);
+  background-image: radial-gradient(#E2E6EA 1.5px, transparent 1.5px);
   background-size: 26px 26px;
 }
 #root { max-width: 480px; margin: 0 auto; min-height: 100dvh; }
@@ -25,7 +25,7 @@ body {
   font-family: 'Courier New', monospace;
   font-weight: 900; letter-spacing: 2px;
   font-size: 28px; color: var(--prim);
-  text-shadow: 3px 3px 0 var(--acc);
+  text-shadow: 3px 3px 0 var(--dark);
   text-align: center; margin: 10px 0 2px;
 }
 .tagline { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 16px; }
@@ -49,7 +49,7 @@ h3 { font-size: 16px; margin: 0 0 2px; }
   display: inline-block; background: var(--acc); border-radius: 7px;
   padding: 3px 10px; font-size: 12.5px; font-weight: 600; margin: 2px 4px 2px 0;
 }
-.chip.ok { background: #BFE8DE; }
+.chip.ok { background: #DCEBFB; }
 .chip.prim { background: var(--prim); color: #fff; }
 
 .bar { border: var(--border); border-radius: 6px; height: 22px; background: var(--bg);
@@ -107,7 +107,7 @@ label { font-size: 13px; font-weight: 700; }
   padding: 10px 6px; text-align: center; cursor: pointer;
 }
 .item.locked { opacity: .38; filter: grayscale(1); }
-.item.equipped { background: #FFE9B8; }
+.item.equipped { background: #FFE3CC; }
 .item .nm { font-size: 11.5px; font-weight: 700; margin-top: 4px; }
 
 .center { text-align: center; }

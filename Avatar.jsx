@@ -120,7 +120,7 @@ const PET_BODY = [
   '.bbbbbb.',
   '..bbbb..',
 ]
-export const PET_COLORS = ['#8FD3A6', '#F4A259', '#7CA9E6', '#C98BDB', '#F49AC2', '#FFD35C']
+export const PET_COLORS = ['#F49A4B', '#7FBE7F', '#7CA9E6', '#C98BDB', '#F49AC2', '#FFC24D']
 // ojos y boca por animo [fila, col]
 const PET_FACE = {
   happy: { eyes: [[2, 2], [2, 5]], mouth: [[4, 2], [4, 5], [5, 3], [5, 4]] },
