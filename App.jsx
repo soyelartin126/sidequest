@@ -386,7 +386,7 @@ function GoalCard({ g, onClick }) {
   const reward = g.rewardItem && itemById(g.rewardItem)
   return (
     <div className="card" onClick={onClick} style={{ cursor: 'pointer' }}>
-      {g.image && <img src={g.image} alt="" style={{ width: '100%', borderRadius: 8, border: '2px solid var(--dark)', marginBottom: 8, maxHeight: 110, objectFit: 'cover' }} />}
+      {g.image && <img src={g.image} alt="" style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 110, objectFit: 'cover' }} />}
       <div className="row">
         <div className="grow">
           <h3>{g.title}</h3>
@@ -591,7 +591,7 @@ function Quests({ quests, goals, pendingRedeem, onJoin, onRedeem }) {
         return (
           <div key={q.id} className="card">
             {q.image && <img src={q.image} alt={q.sponsor}
-              style={{ width: '100%', borderRadius: 8, border: '2px solid var(--dark)', marginBottom: 8, maxHeight: 130, objectFit: 'cover' }} />}
+              style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 130, objectFit: 'cover' }} />}
             <h3>{q.title}</h3>
             <div className="muted small">Patrocina: {q.sponsor} · {q.freqPerWeek}x/semana · {q.weeks} semanas</div>
             <div className="spacer" />
@@ -978,7 +978,7 @@ function Admin({ quests, profile, onBack, onNotify, onChanged }) {
             const f = e.target.files?.[0]
             if (f) set('image', await resizePhoto(f, 640))
           }} />
-          {form.image && <img src={form.image} alt="" style={{ width: '100%', borderRadius: 8, border: '2px solid var(--dark)', marginBottom: 8, maxHeight: 120, objectFit: 'cover' }} />}
+          {form.image && <img src={form.image} alt="" style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 120, objectFit: 'cover' }} />}
           <label>Veces por semana: {form.freqPerWeek}</label>
           <input type="range" min="1" max="7" value={form.freqPerWeek} onChange={e => set('freqPerWeek', +e.target.value)} />
           <label>Semanas: {form.weeks}</label>
