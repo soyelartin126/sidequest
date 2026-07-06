@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, SKINS, HAIRS, SHIRTS } from './Avatar.jsx'
+import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, SKINS, HAIRS, SHIRTS } from './Avatar.jsx'
 import * as db from './supabase.js'
 import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
@@ -320,8 +320,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', pendingRedeem, onGoal,
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
   return (
     <>
-      <div className="logo">SIDEQUEST</div>
-      <div className="tagline">gamifica tu vida</div>
+      <Cover id={coverById(profile.avatar?.cover).id} greeting={`Hola, ${profile.name}`} sub="gamifica tu vida" />
 
       <div className="card row">
         <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} mood={mood} />
@@ -808,7 +807,8 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', onAvatar, onEqui
   const [code, setCode] = useState('')
   const completed = goals.filter(g => g.status === 'completed').length
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
-  const curBg = profile.avatar?.bg || 'crema'
+  const curBg = profile.avatar?.bg || 'niebla'
+  const curCover = profile.avatar?.cover || COVERS[0].id
   const Sw = ({ colors, k }) => (
     <div className="swatches">
       {colors.map(c => (
@@ -849,6 +849,23 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', onAvatar, onEqui
           </div>
         </div>
       )}
+
+      <h2>Portada</h2>
+      <div className="card">
+        <p className="muted small">La imagen de portada de tu inicio. Se desbloquean subiendo de nivel.</p>
+        <div className="bgs">
+          {COVERS.map(c => {
+            const locked = lvl.level < c.minLevel
+            return (
+              <div key={c.id} className={'cover-opt' + (curCover === c.id ? ' sel' : '') + (locked ? ' locked' : '')}
+                onClick={() => !locked && onAvatar({ ...profile.avatar, cover: c.id })}>
+                <div className="cover-thumb"><CoverThumb id={c.id} /></div>
+                <div className="bg-nm">{locked ? `🔒 Nv ${c.minLevel}` : c.name}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       <h2>Fondo de la app</h2>
       <div className="card">
