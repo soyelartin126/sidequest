@@ -93,6 +93,12 @@ label { font-size: 13px; font-weight: 700; }
 .swatch { width: 34px; height: 34px; border-radius: 10px; border: 3px solid transparent; cursor: pointer; }
 .swatch.sel { border-color: var(--dark); box-shadow: 0 0 0 3px rgba(22, 38, 63, .12); }
 
+.hair-opt {
+  border: 3px solid transparent; border-radius: 12px; padding: 2px 4px;
+  background: #F1F3F5; cursor: pointer; line-height: 0;
+}
+.hair-opt.sel { border-color: var(--dark); background: #FFE3CC; }
+
 .nav {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; background: var(--card);

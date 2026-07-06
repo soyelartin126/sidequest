@@ -1,12 +1,12 @@
 // Avatar pixel-art renderizado como SVG a partir de grillas de caracteres.
-// h=pelo s=piel e=ojo b=polera p=pantalon z=zapato .=vacio
+// s=piel e=ojo b=polera p=pantalon z=zapato .=vacio  (el pelo es capa aparte)
 
 const BODY = [
-  '....hhhhhh....',
-  '...hhhhhhhh...',
-  '..hhhhhhhhhh..',
-  '..hhssssssss..',
-  '..hsessse.ss..',
+  '..............',
+  '..............',
+  '..ssssssssss..',
+  '..ssssssssss..',
+  '..ssessse.ss..',
   '...ssssssss...',
   '...ss.ss.ss...',
   '....ssssss....',
@@ -19,6 +19,24 @@ const BODY = [
   '...pp....pp...',
   '...pp....pp...',
   '...zz....zz...',
+]
+
+// ---- Peinados (capa de pelo, [fila, col]) ----
+const hrow = (row, x0, x1) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [row, x0 + i])
+const HAIRSTYLES = {
+  clasico: [...hrow(0, 4, 9), ...hrow(1, 3, 10), ...hrow(2, 2, 11), [3, 2], [3, 3], [4, 2]],
+  corto: [...hrow(1, 4, 9), ...hrow(2, 3, 10), [3, 2], [3, 3], [3, 10], [3, 11]],
+  largo: [...hrow(0, 4, 9), ...hrow(1, 3, 10), ...hrow(2, 2, 11), [3, 2], [3, 3], [3, 10], [3, 11],
+    [4, 2], [4, 11], [5, 2], [5, 11], [6, 2], [6, 11], [7, 3], [7, 10]],
+  afro: [...hrow(-1, 4, 9), ...hrow(0, 3, 10), ...hrow(1, 2, 11), ...hrow(2, 2, 11),
+    [3, 2], [3, 11], [4, 2], [4, 11]],
+  mono: [...hrow(-2, 6, 7), ...hrow(-1, 6, 7), ...hrow(0, 4, 9), ...hrow(1, 3, 10), ...hrow(2, 2, 11), [3, 2], [3, 3]],
+  crestas: [[-1, 5], [-1, 7], [-1, 9], ...hrow(0, 5, 9), ...hrow(1, 6, 8), [2, 7]],
+}
+export const HAIR_STYLES = [
+  { id: 'clasico', name: 'Clásico' }, { id: 'corto', name: 'Corto' },
+  { id: 'largo', name: 'Largo' }, { id: 'afro', name: 'Afro' },
+  { id: 'mono', name: 'Moño' }, { id: 'crestas', name: 'Crestas' },
 ]
 
 // helpers para construir overlays [fila, col, color]
@@ -74,9 +92,14 @@ const OVERLAYS = {
     ...px(16, 13, '#2E7D32'), ...px(11, 13, '#F4511E')],
 }
 
-export const SKINS = ['#FFCC9C', '#F1B47E', '#C68B59', '#8D5524']
-export const HAIRS = ['#5D4037', '#212121', '#B8722C', '#E8B84B', '#9E9E9E', '#7C5CBF']
-export const SHIRTS = ['#F4511E', '#2A9D8F', '#7C5CBF', '#1E88E5', '#D81B60', '#FFC93C']
+export const SKINS = ['#FFDBAC', '#FFCC9C', '#F1B47E', '#E0A06E', '#C68B59', '#A9714B', '#8D5524', '#5C3A21']
+export const HAIRS = ['#2B1B12', '#5D4037', '#8D5A2B', '#B8722C', '#D6A24C', '#E8B84B',
+  '#9E9E9E', '#EDEDED', '#C0392B', '#7C5CBF', '#2E7D4F', '#1E88E5']
+export const SHIRTS = ['#F5811F', '#E7420F', '#2A9D8F', '#3582DB', '#16263F', '#7C5CBF',
+  '#D81B60', '#F2C14E', '#3F7D5A', '#6B7480']
+export const PANTS = ['#2B3440', '#4A4A5A', '#3A5A8C', '#5C4433', '#2E7D4F', '#6B7480', '#7C5CBF']
+export const SHOES = ['#6D4C41', '#2B3440', '#E7420F', '#3582DB', '#EDEDED', '#7C5CBF']
+export const EYES = ['#3A2C2A', '#3F6BA5', '#2E7D4F', '#6D4C41', '#111111']
 
 // boca segun el animo (color labios sobre piel solida, filas 5-6)
 const MOUTH = '#8A4A3A'
@@ -87,14 +110,19 @@ const MOUTHS = {
 }
 
 export default function Avatar({ avatar, equipped = {}, size = 120, mood = 'happy' }) {
-  const { skin = SKINS[0], hair = HAIRS[0], shirt = SHIRTS[0] } = avatar || {}
-  const cmap = { h: hair, s: skin, e: '#3A2C2A', b: shirt, p: '#4A4A5A', z: '#6D4C41' }
+  const {
+    skin = SKINS[0], hair = HAIRS[1], shirt = SHIRTS[0],
+    hairStyle = 'clasico', pants = PANTS[0], shoes = SHOES[0], eye = EYES[0],
+  } = avatar || {}
+  const cmap = { s: skin, e: eye, b: shirt, p: pants, z: shoes }
   const cells = []
   BODY.forEach((row, y) => {
     row.split('').forEach((c, x) => {
       if (cmap[c]) cells.push(<rect key={`b${x}-${y}`} x={x} y={y + 2} width="1" height="1" fill={cmap[c]} />)
     })
   })
+  ;(HAIRSTYLES[hairStyle] || HAIRSTYLES.clasico).forEach(([y, x], i) =>
+    cells.push(<rect key={`h${i}`} x={x} y={y + 2} width="1" height="1" fill={hair} />))
   ;(MOUTHS[mood] || MOUTHS.happy).forEach(([y, x], i) =>
     cells.push(<rect key={`m${i}`} x={x} y={y + 2} width="1" height="1" fill={MOUTH} />))
   Object.values(equipped).forEach(itemId => {

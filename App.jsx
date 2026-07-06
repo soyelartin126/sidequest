@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, SKINS, HAIRS, SHIRTS } from './Avatar.jsx'
+import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, SKINS, HAIRS, SHIRTS, PANTS, SHOES, EYES, HAIR_STYLES } from './Avatar.jsx'
 import * as db from './supabase.js'
 import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
@@ -838,8 +838,21 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', onAvatar, onEqui
       {editing && (
         <div className="card">
           <label>Piel</label><Sw colors={SKINS} k="skin" />
+          <label>Peinado</label>
+          <div className="swatches">
+            {HAIR_STYLES.map(h => (
+              <div key={h.id} title={h.name}
+                className={'hair-opt' + ((profile.avatar?.hairStyle || 'clasico') === h.id ? ' sel' : '')}
+                onClick={() => onAvatar({ ...profile.avatar, hairStyle: h.id })}>
+                <Avatar avatar={{ ...profile.avatar, hairStyle: h.id }} size={42} mood="happy" />
+              </div>
+            ))}
+          </div>
           <label>Pelo</label><Sw colors={HAIRS} k="hair" />
+          <label>Ojos</label><Sw colors={EYES} k="eye" />
           <label>Polera</label><Sw colors={SHIRTS} k="shirt" />
+          <label>Pantalón</label><Sw colors={PANTS} k="pants" />
+          <label>Zapatos</label><Sw colors={SHOES} k="shoes" />
           <label>Color de tu mascota</label>
           <div className="swatches">
             {PET_COLORS.map(c => (
