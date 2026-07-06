@@ -1,0 +1,948 @@
+import React, { useEffect, useRef, useState } from 'react'
+import Avatar, { ItemSprite, PixelCode, SKINS, HAIRS, SHIRTS } from './Avatar.jsx'
+import * as db from './supabase.js'
+import {
+  levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
+  makeRedeemCode, ITEMS, earnedItems, itemById, eligibleLoot, tierForDays, TIERS, DURATIONS, goalDays,
+  XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
+} from './game.js'
+
+const ADMIN_CODE = 'PIXEL2026'
+const THEMES = ['Familia', 'Trabajo', 'Amigos', 'Estudio', 'Deporte', 'Otro']
+
+function resizePhoto(file, max = 320) {
+  return new Promise(resolve => {
+    const img = new Image()
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height))
+      const c = document.createElement('canvas')
+      c.width = img.width * scale
+      c.height = img.height * scale
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
+      resolve(c.toDataURL('image/jpeg', 0.6))
+    }
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+function Bar({ frac }) {
+  const total = 16
+  const on = Math.round(Math.min(1, Math.max(0, frac)) * total)
+  return (
+    <div className="bar">
+      {Array.from({ length: total }, (_, i) => <span key={i} className={i < on ? 'on' : ''} />)}
+    </div>
+  )
+}
+
+function TierBadge({ weeks }) {
+  const tier = tierForDays(Math.round(weeks * 7))
+  return <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
+}
+
+export default function App() {
+  const [session, setSession] = useState(undefined) // undefined = cargando
+  const [data, setData] = useState(null)
+  const [tab, setTab] = useState('home')
+  const [view, setView] = useState(null)
+  const [toast, setToast] = useState(null)
+  const toastTimer = useRef()
+
+  const notify = msg => {
+    setToast(msg)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(null), 3000)
+  }
+
+  useEffect(() => {
+    db.getSession().then(setSession)
+    const { data: sub } = db.onAuthChange(setSession)
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  const refresh = async (announce = false) => {
+    if (!session?.user) return
+    const before = data ? earnedItems(data) : null
+    const next = await db.fetchState(session.user.id)
+    if (next.error) { notify('Error de conexión: ' + next.error.message); return }
+    if (announce && before) {
+      const after = earnedItems(next)
+      const nuevos = [...after].filter(id => !before.has(id))
+      if (nuevos.length) {
+        const names = nuevos.map(id => ITEMS.find(i => i.id === id)?.name).join(', ')
+        setTimeout(() => notify(`¡Objeto desbloqueado! ${names}`), 500)
+      }
+    }
+    setData(next)
+  }
+
+  useEffect(() => { if (session?.user) refresh() }, [session?.user?.id])
+
+  if (session === undefined) return <div className="app center"><div className="logo">SIDEQUEST</div><p className="muted">Cargando…</p></div>
+  if (!session) return <AuthScreen onNotify={notify} toast={toast} />
+  if (!data) return <div className="app center"><div className="logo">SIDEQUEST</div><p className="muted">Cargando tu aventura…</p></div>
+
+  const { profile, goals, quests, groups } = data
+  const lvl = levelFor(profile.xp)
+  const stk = streak(goals)
+  const earned = earnedItems(data)
+  const pendingRedeem = goals.filter(g => g.redeemCode && !g.redeemed)
+
+  const doCheckin = async (goal, note, photoFile) => {
+    if (!canCheckinToday(goal)) return
+    const photo = photoFile ? await resizePhoto(photoFile) : null
+    await db.insertCheckin(profile.id, goal.id, { day: dayKey(), note, photo })
+    const p = { ...profile, xp: profile.xp + XP_CHECKIN }
+    const willComplete = goal.checkins.length + 1 >= goalTarget(goal)
+    if (willComplete) {
+      p.xp += goal.sponsor ? XP_QUEST_COMPLETE : XP_GOAL_COMPLETE
+      if (goal.rewardItem && !p.items.includes(goal.rewardItem)) p.items = [...p.items, goal.rewardItem]
+      await db.completeGoal({ ...goal, redeemCode: goal.sponsor ? makeRedeemCode() : null })
+      notify(goal.sponsor ? `¡Reto completado! Tienes un canje en ${goal.sponsor}` : '¡Misión completada!')
+    } else {
+      notify(`Check-in listo · +${XP_CHECKIN} XP`)
+    }
+    const stNow = streak(goals) + 1
+    p.bestStreak = Math.max(p.bestStreak || 0, stNow)
+    await db.saveProfile(p)
+    await refresh(true)
+  }
+
+  const screens = {
+    home: <Home profile={profile} lvl={lvl} stk={stk} goals={goals}
+      pendingRedeem={pendingRedeem}
+      onGoal={g => setView({ name: 'goal', id: g.id })}
+      onRedeem={g => setView({ name: 'redeem', id: g.id })}
+      onNew={() => setView({ name: 'newGoal' })} />,
+    goals: <Goals goals={goals}
+      onGoal={g => setView({ name: 'goal', id: g.id })}
+      onNew={() => setView({ name: 'newGoal' })} />,
+    quests: <Quests quests={quests.filter(q => !q.groupId)} goals={goals} pendingRedeem={pendingRedeem}
+      onJoin={async q => {
+        await db.insertGoal(profile.id, { ...q, questId: q.id })
+        notify(`Te uniste al reto de ${q.sponsor}`)
+        await refresh(); setTab('home')
+      }}
+      onRedeem={g => setView({ name: 'redeem', id: g.id })} />,
+    groups: <Groups groups={groups} profile={profile} onNotify={notify}
+      onOpen={g => setView({ name: 'group', id: g.id })}
+      onChanged={() => refresh()} />,
+    profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals}
+      onAvatar={async av => { await db.saveProfile({ ...profile, avatar: av }); refresh() }}
+      onEquip={async item => {
+        const eq = { ...(profile.equipped || {}) }
+        eq[item.slot] = eq[item.slot] === item.id ? undefined : item.id
+        await db.saveProfile({ ...profile, equipped: eq }); refresh()
+      }}
+      onAdmin={() => setView({ name: 'admin' })}
+      onUnlockAdmin={async code => {
+        if (code === ADMIN_CODE) {
+          await db.saveProfile({ ...profile, isAdmin: true })
+          notify('Modo admin activado'); refresh()
+        } else notify('Código incorrecto')
+      }}
+      onLogout={() => db.signOut()} />,
+  }
+
+  let overlay = null
+  if (view?.name === 'newGoal') {
+    overlay = <NewGoal owned={earned} onBack={() => setView(null)} onCreate={async g => {
+      await db.insertGoal(profile.id, g)
+      notify('¡Nueva misión creada!')
+      setView(null); refresh()
+    }} />
+  } else if (view?.name === 'goal') {
+    const g = goals.find(x => x.id === view.id)
+    overlay = g && <GoalDetail goal={g} onBack={() => setView(null)}
+      onCheckin={doCheckin}
+      onRedeem={() => setView({ name: 'redeem', id: g.id })}
+      onDelete={async () => { await db.deleteGoal(g.id); setView(null); refresh() }} />
+  } else if (view?.name === 'redeem') {
+    const g = goals.find(x => x.id === view.id)
+    overlay = g && <Redeem goal={g} onBack={() => setView(null)} />
+  } else if (view?.name === 'group') {
+    const g = groups.find(x => x.id === view.id)
+    overlay = g && <GroupDetail group={g} profile={profile} goals={goals}
+      quests={quests.filter(q => q.groupId === g.id)}
+      onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
+  } else if (view?.name === 'admin') {
+    overlay = <Admin quests={quests.filter(q => !q.groupId)} profile={profile}
+      onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
+  }
+
+  return (
+    <div className="app">
+      {toast && <div className="toast">{toast}</div>}
+      {overlay || screens[tab]}
+      {!overlay && (
+        <nav className="nav">
+          {[['home', '🏠', 'Inicio'], ['goals', '⚔️', 'Misiones'], ['quests', '🎁', 'Premios'],
+            ['groups', '👥', 'Grupos'], ['profile', '👤', 'Perfil']].map(([id, ico, label]) => (
+            <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>
+              <span className="ico">{ico}</span>{label}
+            </button>
+          ))}
+        </nav>
+      )}
+    </div>
+  )
+}
+
+// ---------- Auth: login + registro con personaje ----------
+function AuthScreen({ onNotify, toast }) {
+  const [mode, setMode] = useState('login') // login | signup | signup2
+  const [form, setForm] = useState({ email: '', password: '', name: '', phone: '' })
+  const [avatar, setAvatar] = useState({ skin: SKINS[0], hair: HAIRS[0], shirt: SHIRTS[0] })
+  const [busy, setBusy] = useState(false)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const Sw = ({ colors, k }) => (
+    <div className="swatches">
+      {colors.map(c => (
+        <div key={c} className={'swatch' + (avatar[k] === c ? ' sel' : '')}
+          style={{ background: c }} onClick={() => setAvatar(a => ({ ...a, [k]: c }))} />
+      ))}
+    </div>
+  )
+  const submitLogin = async () => {
+    setBusy(true)
+    const { error } = await db.signIn(form.email.trim(), form.password)
+    setBusy(false)
+    if (error) onNotify(error.message.includes('Invalid') ? 'Correo o contraseña incorrectos' : error.message)
+  }
+  const submitSignup = async () => {
+    setBusy(true)
+    const { error } = await db.signUp({
+      email: form.email.trim(), password: form.password,
+      name: form.name.trim(), phone: form.phone.trim(), avatar,
+    })
+    setBusy(false)
+    if (error) onNotify(error.message)
+  }
+  return (
+    <div className="app">
+      {toast && <div className="toast">{toast}</div>}
+      <div className="logo">SIDEQUEST</div>
+      <div className="tagline">gamifica tu vida · cumple objetivos · gana premios reales</div>
+
+      {mode === 'login' && (
+        <div className="card">
+          <h1>Entrar</h1>
+          <label>Correo</label>
+          <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="tu@correo.com" />
+          <label>Contraseña</label>
+          <input type="password" value={form.password} onChange={e => set('password', e.target.value)} />
+          <button disabled={busy || !form.email || !form.password} onClick={submitLogin}>
+            {busy ? 'Entrando…' : 'Entrar'}
+          </button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setMode('signup')}>Crear cuenta nueva</button>
+        </div>
+      )}
+
+      {mode === 'signup' && (
+        <div className="card">
+          <h1>Crear cuenta</h1>
+          <label>Tu nombre</label>
+          <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ej: Martín" maxLength={20} />
+          <label>Correo</label>
+          <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="tu@correo.com" />
+          <label>Teléfono (opcional)</label>
+          <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+56 9 …" />
+          <label>Contraseña (mínimo 6 caracteres)</label>
+          <input type="password" value={form.password} onChange={e => set('password', e.target.value)} />
+          <button disabled={!form.name.trim() || !form.email.includes('@') || form.password.length < 6}
+            onClick={() => setMode('signup2')}>
+            Siguiente: tu personaje →
+          </button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setMode('login')}>Ya tengo cuenta</button>
+        </div>
+      )}
+
+      {mode === 'signup2' && (
+        <>
+          <div className="card center">
+            <Avatar avatar={avatar} size={110} />
+            <h1>Crea tu personaje</h1>
+          </div>
+          <div className="card">
+            <label>Piel</label><Sw colors={SKINS} k="skin" />
+            <label>Pelo</label><Sw colors={HAIRS} k="hair" />
+            <label>Polera</label><Sw colors={SHIRTS} k="shirt" />
+            <button disabled={busy} onClick={submitSignup}>
+              {busy ? 'Creando cuenta…' : '¡Comenzar la aventura!'}
+            </button>
+            <div className="spacer" />
+            <button className="sec" onClick={() => setMode('signup')}>← Volver</button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ---------- Inicio ----------
+function Home({ profile, lvl, stk, goals, pendingRedeem, onGoal, onRedeem, onNew }) {
+  const active = goals.filter(g => g.status === 'active')
+  const dots = weekDots(goals)
+  return (
+    <>
+      <div className="logo">SIDEQUEST</div>
+      <div className="tagline">gamifica tu vida</div>
+
+      <div className="card row">
+        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} />
+        <div className="grow">
+          <h1>{profile.name}</h1>
+          <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
+          <div className="spacer" />
+          <Bar frac={lvl.progress} />
+          <div className="muted small">
+            {lvl.next ? `${profile.xp} / ${lvl.next.xp} XP` : `${profile.xp} XP · nivel máximo`}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="row">
+          <span style={{ fontSize: 30 }}>🔥</span>
+          <div className="grow">
+            <h3>Racha: {stk} {stk === 1 ? 'día' : 'días'}</h3>
+            <div className="dots">
+              {dots.map((d, i) => (
+                <div key={i} className={'dot' + (d.done ? ' on' : '') + (d.future ? ' future' : '')}>{d.label}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {pendingRedeem.map(g => (
+        <div key={g.id} className="banner row" onClick={() => onRedeem(g)} style={{ cursor: 'pointer' }}>
+          <span style={{ fontSize: 28 }}>🏆</span>
+          <div className="grow">
+            <b>¡Tienes un canje disponible!</b>
+            <div className="muted small">{g.prize} · {g.sponsor} — toca para ver tu código</div>
+          </div>
+        </div>
+      ))}
+
+      <h2>Misiones activas</h2>
+      {active.length === 0 && (
+        <div className="card center">
+          <p className="muted">Sin misiones activas. ¡Crea tu primer objetivo!</p>
+          <button onClick={onNew}>+ Nueva misión</button>
+        </div>
+      )}
+      {active.map(g => <GoalCard key={g.id} g={g} onClick={() => onGoal(g)} />)}
+      {active.length > 0 && <button className="sec" onClick={onNew}>+ Nueva misión</button>}
+    </>
+  )
+}
+
+function GoalCard({ g, onClick }) {
+  const t = goalTarget(g)
+  const done = g.checkins.length
+  const reward = g.rewardItem && itemById(g.rewardItem)
+  return (
+    <div className="card" onClick={onClick} style={{ cursor: 'pointer' }}>
+      {g.image && <img src={g.image} alt="" style={{ width: '100%', borderRadius: 8, border: '2px solid var(--dark)', marginBottom: 8, maxHeight: 110, objectFit: 'cover' }} />}
+      <div className="row">
+        <div className="grow">
+          <h3>{g.title}</h3>
+          {g.sponsor
+            ? <div className="muted small">Patrocina: {g.sponsor}</div>
+            : <div className="muted small">{g.questId ? 'Reto grupal · ' : 'Objetivo personal · '}<TierBadge weeks={g.weeks} /></div>}
+        </div>
+        <b>{done}/{t}</b>
+      </div>
+      <div className="spacer" />
+      <Bar frac={done / t} />
+      {g.prize && <div><span className="chip">🎁 {g.prize}</span></div>}
+      {reward && <div><span className="chip"><ItemSprite id={reward.id} size={14} /> Botín: {reward.name}</span></div>}
+      {canCheckinToday(g)
+        ? <div><span className="chip ok">Check-in pendiente hoy</span></div>
+        : g.status === 'active' && <div><span className="chip">✔ Hecho por hoy</span></div>}
+    </div>
+  )
+}
+
+// ---------- Misiones ----------
+function Goals({ goals, onGoal, onNew }) {
+  const active = goals.filter(g => g.status === 'active')
+  const completed = goals.filter(g => g.status === 'completed')
+  return (
+    <>
+      <h1>Misiones</h1>
+      <button onClick={onNew}>+ Nueva misión</button>
+      <h2>Activas ({active.length})</h2>
+      {active.length === 0 && <p className="muted">Nada por aquí todavía.</p>}
+      {active.map(g => <GoalCard key={g.id} g={g} onClick={() => onGoal(g)} />)}
+      <h2>Completadas ({completed.length})</h2>
+      {completed.map(g => (
+        <div key={g.id} className="card flat row" onClick={() => onGoal(g)} style={{ cursor: 'pointer' }}>
+          <span style={{ fontSize: 22 }}>🏅</span>
+          <div className="grow">
+            <b>{g.title}</b>
+            <div className="muted small">{g.sponsor ? `Reto de ${g.sponsor}` : 'Objetivo personal'}</div>
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
+function NewGoal({ owned, onBack, onCreate }) {
+  const [title, setTitle] = useState('')
+  const [freq, setFreq] = useState(3)
+  const [durIdx, setDurIdx] = useState(5)
+  const weeks = DURATIONS[durIdx].weeks
+  const [reward, setReward] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const tier = tierForDays(Math.round(weeks * 7))
+  const loot = eligibleLoot(freq, weeks, owned)
+  if (reward && !loot.some(it => it.id === reward)) setReward(null)
+  return (
+    <>
+      <div className="topbar">
+        <button className="sec mini" onClick={onBack}>← Volver</button>
+        <h1>Nueva misión</h1>
+      </div>
+      <div className="card">
+        <label>¿Qué quieres lograr?</label>
+        <input value={title} onChange={e => setTitle(e.target.value)}
+          placeholder="Ej: Ir al gym, leer 20 min, salir a trotar" maxLength={60} />
+        <label>Veces por semana: {freq}</label>
+        <input type="range" min="1" max="7" value={freq} onChange={e => setFreq(+e.target.value)} />
+        <label>Duración: {DURATIONS[durIdx].label}</label>
+        <input type="range" min="0" max={DURATIONS.length - 1} value={durIdx} onChange={e => setDurIdx(+e.target.value)} />
+        <p className="muted small">
+          Meta total: {Math.max(1, Math.round(freq * weeks))} check-ins · máximo 1 por día · dificultad:{' '}
+          <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
+        </p>
+      </div>
+
+      <div className="card">
+        <h3>Elige tu botín 🗡</h3>
+        <p className="muted small">
+          Completa la misión y ganas el objeto. Misiones más largas e intensas desbloquean mejor botín.
+        </p>
+        {loot.length === 0 && <p className="muted">Ya tienes todo el botín de este nivel. ¡Sube la duración o frecuencia!</p>}
+        <div className="items">
+          {loot.map(it => (
+            <div key={it.id} className={'item' + (reward === it.id ? ' equipped' : '')}
+              onClick={() => setReward(r => r === it.id ? null : it.id)}>
+              <ItemSprite id={it.id} />
+              <div className="nm">{it.name}</div>
+              <div className="muted small" style={{ color: TIERS[it.tier].color, fontWeight: 700 }}>
+                {TIERS[it.tier].name} · {it.reqCheckins}✔
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="spacer" />
+        <button disabled={!title.trim() || busy} onClick={async () => {
+          setBusy(true)
+          await onCreate({ title: title.trim(), freqPerWeek: freq, weeks, rewardItem: reward })
+        }}>
+          {busy ? 'Creando…' : reward ? `Crear misión (botín: ${itemById(reward).name})` : 'Crear misión sin botín'}
+        </button>
+      </div>
+    </>
+  )
+}
+
+function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
+  const [note, setNote] = useState('')
+  const [file, setFile] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const t = goalTarget(g)
+  const can = canCheckinToday(g)
+  return (
+    <>
+      <div className="topbar">
+        <button className="sec mini" onClick={onBack}>← Volver</button>
+        <h1 style={{ fontSize: 18 }}>{g.title}</h1>
+      </div>
+      <div className="card">
+        {g.sponsor && <span className="chip prim">Reto de {g.sponsor}</span>}
+        {g.prize && <span className="chip">🎁 {g.prize}</span>}
+        <div className="spacer" />
+        <Bar frac={g.checkins.length / t} />
+        <div className="muted small">{g.checkins.length} de {t} check-ins · {g.freqPerWeek}x por semana · {goalDays(g)} días</div>
+      </div>
+
+      {g.status === 'completed' ? (
+        <div className="card center">
+          <h3>🏆 ¡Misión completada!</h3>
+          {g.redeemCode && !g.redeemed && <button className="acc" onClick={onRedeem}>Ver mi canje</button>}
+          {g.redeemed && <p className="muted">Premio ya canjeado. ¡A por la próxima!</p>}
+        </div>
+      ) : (
+        <div className="card">
+          <h3>Check-in de hoy</h3>
+          {can ? (
+            <>
+              <input value={note} onChange={e => setNote(e.target.value)}
+                placeholder="Nota opcional (¿cómo te fue?)" maxLength={80} />
+              <label className="muted small">Foto de evidencia (opcional)</label>
+              <input type="file" accept="image/*" capture="environment"
+                onChange={e => setFile(e.target.files?.[0] || null)} />
+              <button disabled={busy} onClick={async () => {
+                setBusy(true)
+                await onCheckin(g, note, file)
+                setNote(''); setFile(null); setBusy(false)
+              }}>
+                {busy ? 'Guardando…' : `✔ Reportar avance (+${XP_CHECKIN} XP)`}
+              </button>
+            </>
+          ) : <p className="muted">Ya hiciste el check-in de hoy. Vuelve mañana 💪</p>}
+        </div>
+      )}
+
+      <h2>Historial</h2>
+      <div className="card flat">
+        {g.checkins.length === 0 && <p className="muted">Aún no hay check-ins.</p>}
+        {[...g.checkins].reverse().map((c, i) => (
+          <div key={i} className="hist">
+            {c.photo ? <img className="photo-thumb" src={c.photo} alt="" /> : <span style={{ fontSize: 20 }}>✔</span>}
+            <div className="grow">
+              <b>{c.day}</b>
+              {c.note && <div className="muted small">{c.note}</div>}
+            </div>
+            <span className="muted small">+{XP_CHECKIN} XP</span>
+          </div>
+        ))}
+      </div>
+      {g.status === 'active' && (
+        <button className="sec" onClick={() => confirm('¿Abandonar esta misión?') && onDelete()}>
+          Abandonar misión
+        </button>
+      )}
+    </>
+  )
+}
+
+// ---------- Premios / retos de empresas ----------
+function Quests({ quests, goals, pendingRedeem, onJoin, onRedeem }) {
+  const joined = new Set(goals.map(g => g.questId).filter(Boolean))
+  const activeQuests = quests.filter(q => q.active)
+  const [busy, setBusy] = useState(false)
+  return (
+    <>
+      <h1>Premios</h1>
+      <p className="muted">Retos patrocinados por comercios reales. Complétalos y canjea tu premio en la tienda.</p>
+
+      {pendingRedeem.length > 0 && <h2>Tus canjes</h2>}
+      {pendingRedeem.map(g => (
+        <div key={g.id} className="banner row" onClick={() => onRedeem(g)} style={{ cursor: 'pointer' }}>
+          <span style={{ fontSize: 26 }}>🏆</span>
+          <div className="grow">
+            <b>{g.prize}</b>
+            <div className="muted small">{g.sponsor} · toca para ver el código</div>
+          </div>
+        </div>
+      ))}
+
+      <h2>Retos disponibles</h2>
+      {activeQuests.length === 0 && <p className="muted">Pronto habrá nuevos retos.</p>}
+      {activeQuests.map(q => {
+        const already = joined.has(q.id)
+        return (
+          <div key={q.id} className="card">
+            {q.image && <img src={q.image} alt={q.sponsor}
+              style={{ width: '100%', borderRadius: 8, border: '2px solid var(--dark)', marginBottom: 8, maxHeight: 130, objectFit: 'cover' }} />}
+            <h3>{q.title}</h3>
+            <div className="muted small">Patrocina: {q.sponsor} · {q.freqPerWeek}x/semana · {q.weeks} semanas</div>
+            <div className="spacer" />
+            <span className="chip">🎁 {q.prize}</span>
+            <div className="spacer" />
+            <button disabled={already || busy} onClick={async () => { setBusy(true); await onJoin(q); setBusy(false) }}>
+              {already ? 'Ya estás en este reto' : '¡Acepto el reto!'}
+            </button>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
+function Redeem({ goal: g, onBack }) {
+  return (
+    <>
+      <div className="topbar">
+        <button className="sec mini" onClick={onBack}>← Volver</button>
+        <h1>Tu canje</h1>
+      </div>
+      <div className="card center">
+        <h3>🎁 {g.prize}</h3>
+        <p className="muted">Muestra este código en {g.sponsor} para cobrar tu premio. Es de un solo uso.</p>
+        <PixelCode code={g.redeemCode} />
+        <div className="code">{g.redeemCode}</div>
+        {g.redeemed
+          ? <span className="chip ok">Canjeado ✔</span>
+          : <p className="muted small">El local lo valida y lo marca como usado.</p>}
+      </div>
+    </>
+  )
+}
+
+// ---------- Grupos ----------
+function Groups({ groups, profile, onOpen, onNotify, onChanged }) {
+  const [mode, setMode] = useState(null) // null | create | join
+  const [name, setName] = useState('')
+  const [theme, setTheme] = useState(THEMES[0])
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <>
+      <h1>Grupos</h1>
+      <p className="muted">Familia, trabajo, amigos: retos temáticos compartidos y el avance de todos.</p>
+
+      {groups.map(g => (
+        <div key={g.id} className="card row" onClick={() => onOpen(g)} style={{ cursor: 'pointer' }}>
+          <span style={{ fontSize: 26 }}>👥</span>
+          <div className="grow">
+            <h3>{g.name}</h3>
+            <div className="muted small">{g.theme} · {g.members.length} {g.members.length === 1 ? 'miembro' : 'miembros'}</div>
+          </div>
+          {(g.myRole === 'admin' || g.ownerId === profile.id) && <span className="chip">admin</span>}
+        </div>
+      ))}
+      {groups.length === 0 && <div className="card center"><p className="muted">Aún no estás en ningún grupo.</p></div>}
+
+      {!mode && (
+        <>
+          <button onClick={() => setMode('create')}>+ Crear grupo</button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setMode('join')}>Unirme con un código</button>
+        </>
+      )}
+
+      {mode === 'create' && (
+        <div className="card">
+          <h3>Nuevo grupo</h3>
+          <label>Nombre</label>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Los Ortega" maxLength={30} />
+          <label>Tema</label>
+          <select value={theme} onChange={e => setTheme(e.target.value)}>
+            {THEMES.map(t => <option key={t}>{t}</option>)}
+          </select>
+          <button disabled={!name.trim() || busy} onClick={async () => {
+            setBusy(true)
+            const { error } = await db.createGroup(profile.id, name.trim(), theme)
+            setBusy(false)
+            if (error) onNotify(error.message)
+            else { onNotify('¡Grupo creado!'); setMode(null); setName(''); onChanged() }
+          }}>Crear grupo</button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setMode(null)}>Cancelar</button>
+        </div>
+      )}
+
+      {mode === 'join' && (
+        <div className="card">
+          <h3>Unirme a un grupo</h3>
+          <label>Código de invitación</label>
+          <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} />
+          <button disabled={code.length !== 6 || busy} onClick={async () => {
+            setBusy(true)
+            const { error } = await db.joinGroup(profile.id, code)
+            setBusy(false)
+            if (error) onNotify('Código no válido')
+            else { onNotify('¡Bienvenido al grupo!'); setMode(null); setCode(''); onChanged() }
+          }}>Unirme</button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setMode(null)}>Cancelar</button>
+        </div>
+      )}
+    </>
+  )
+}
+
+function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onChanged }) {
+  const isAdmin = g.myRole === 'admin' || g.ownerId === profile.id
+  const joined = new Set(goals.map(x => x.questId).filter(Boolean))
+  const [form, setForm] = useState(null)
+  const [progress, setProgress] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  useEffect(() => {
+    const ids = quests.map(q => q.id)
+    if (ids.length === 0) { setProgress({}); return }
+    db.fetchQuestGoals(ids).then(({ data }) => {
+      const by = {}
+      for (const row of data || []) {
+        by[row.quest_id] = by[row.quest_id] || []
+        by[row.quest_id].push({ userId: row.user_id, count: (row.checkins || []).length, status: row.status })
+      }
+      setProgress(by)
+    })
+  }, [quests.length])
+
+  const nameOf = id => g.members.find(m => m.id === id)?.name || '—'
+
+  return (
+    <>
+      <div className="topbar">
+        <button className="sec mini" onClick={onBack}>← Volver</button>
+        <h1>{g.name}</h1>
+      </div>
+
+      <div className="card">
+        <div className="muted small">Tema: {g.theme} · Código de invitación:</div>
+        <div className="code" style={{ fontSize: 22, letterSpacing: 4 }}>{g.inviteCode}</div>
+        <div className="muted small">Compártelo para que se unan al grupo.</div>
+      </div>
+
+      <h2>Miembros ({g.members.length})</h2>
+      <div className="card flat">
+        {g.members.map(m => (
+          <div key={m.id} className="hist">
+            <span style={{ fontSize: 18 }}>👤</span>
+            <div className="grow"><b>{m.name}</b></div>
+            {m.role === 'admin' && <span className="chip">admin</span>}
+          </div>
+        ))}
+      </div>
+
+      <h2>Retos del grupo</h2>
+      {quests.length === 0 && <p className="muted">Aún no hay retos. {isAdmin ? 'Crea el primero.' : 'El admin puede crearlos.'}</p>}
+      {quests.filter(q => q.active).map(q => {
+        const rows = (progress?.[q.id] || [])
+        const target = Math.max(1, Math.round(q.freqPerWeek * q.weeks))
+        return (
+          <div key={q.id} className="card">
+            <h3>{q.title}</h3>
+            <div className="muted small">{q.freqPerWeek}x/semana · {q.weeks} semanas · meta {target} check-ins</div>
+            <div className="spacer" />
+            {rows.length === 0 && <p className="muted small">Nadie se ha unido todavía.</p>}
+            {rows.map((r, i) => (
+              <div key={i} className="hist">
+                <div className="grow"><b>{nameOf(r.userId)}</b></div>
+                <div style={{ width: 130 }}><Bar frac={r.count / target} /></div>
+                <span className="muted small">{r.status === 'completed' ? '🏆' : `${r.count}/${target}`}</span>
+              </div>
+            ))}
+            <div className="spacer" />
+            <button disabled={joined.has(q.id) || busy} onClick={async () => {
+              setBusy(true)
+              await db.insertGoal(profile.id, { title: q.title, freqPerWeek: q.freqPerWeek, weeks: q.weeks, questId: q.id })
+              setBusy(false); onNotify('¡Te uniste al reto del grupo!'); onChanged()
+            }}>
+              {joined.has(q.id) ? 'Ya estás en este reto' : 'Unirme al reto'}
+            </button>
+          </div>
+        )
+      })}
+
+      {isAdmin && !form && <button onClick={() => setForm({ title: '', freqPerWeek: 3, weeks: 2 })}>+ Nuevo reto del grupo</button>}
+      {form && (
+        <div className="card">
+          <h3>Nuevo reto para {g.name}</h3>
+          <label>Título</label>
+          <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Ej: Todos al gym 3x esta semana" maxLength={60} />
+          <label>Veces por semana: {form.freqPerWeek}</label>
+          <input type="range" min="1" max="7" value={form.freqPerWeek} onChange={e => set('freqPerWeek', +e.target.value)} />
+          <label>Semanas: {form.weeks}</label>
+          <input type="range" min="1" max="8" value={form.weeks} onChange={e => set('weeks', +e.target.value)} />
+          <button disabled={!form.title.trim() || busy} onClick={async () => {
+            setBusy(true)
+            const { error } = await db.insertQuest(profile.id, { ...form, groupId: g.id })
+            setBusy(false)
+            if (error) onNotify(error.message)
+            else { onNotify('¡Reto publicado al grupo!'); setForm(null); onChanged() }
+          }}>Publicar reto</button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setForm(null)}>Cancelar</button>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ---------- Perfil ----------
+function Profile({ profile, lvl, earned, goals, onAvatar, onEquip, onAdmin, onUnlockAdmin, onLogout }) {
+  const [editing, setEditing] = useState(false)
+  const [code, setCode] = useState('')
+  const completed = goals.filter(g => g.status === 'completed').length
+  const Sw = ({ colors, k }) => (
+    <div className="swatches">
+      {colors.map(c => (
+        <div key={c} className={'swatch' + (profile.avatar[k] === c ? ' sel' : '')}
+          style={{ background: c }} onClick={() => onAvatar({ ...profile.avatar, [k]: c })} />
+      ))}
+    </div>
+  )
+  return (
+    <>
+      <div className="card center">
+        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={120} />
+        <h1>{profile.name}</h1>
+        <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
+        <div className="muted small">
+          {profile.xp} XP · mejor racha: {profile.bestStreak || 0} días · {completed} misiones completadas
+        </div>
+        <div className="spacer" />
+        <button className="sec mini" onClick={() => setEditing(e => !e)}>
+          {editing ? 'Listo' : '✏️ Editar personaje'}
+        </button>
+      </div>
+
+      {editing && (
+        <div className="card">
+          <label>Piel</label><Sw colors={SKINS} k="skin" />
+          <label>Pelo</label><Sw colors={HAIRS} k="hair" />
+          <label>Polera</label><Sw colors={SHIRTS} k="shirt" />
+        </div>
+      )}
+
+      <h2>Inventario</h2>
+      <p className="muted small">
+        Toca un objeto desbloqueado para ponérselo a tu personaje. El botín se gana
+        eligiéndolo al crear una misión; los logros se desbloquean solos.
+      </p>
+      {Object.entries(TIERS).map(([tid, tier]) => {
+        const group = ITEMS.filter(it => it.kind === 'loot' && it.tier === tid)
+        return (
+          <div key={tid}>
+            <h2 style={{ color: tier.color }}>{tier.name} <span className="muted small">
+              ({tier.maxDays === Infinity ? `${tier.minDays}+ días` : `${tier.minDays}-${tier.maxDays} días`})</span></h2>
+            <div className="items">
+              {group.map(it => {
+                const has = earned.has(it.id)
+                const eq = profile.equipped?.[it.slot] === it.id
+                return (
+                  <div key={it.id} className={'item' + (has ? '' : ' locked') + (eq ? ' equipped' : '')}
+                    title={it.desc} onClick={() => has && onEquip(it)}>
+                    <ItemSprite id={it.id} />
+                    <div className="nm">{it.name}</div>
+                    {!has && <div className="muted small">🔒 {it.reqCheckins}✔</div>}
+                    {eq && <div className="muted small">puesto</div>}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+      <h2>Logros</h2>
+      <div className="items">
+        {ITEMS.filter(it => it.kind === 'logro').map(it => {
+          const has = earned.has(it.id)
+          const eq = profile.equipped?.[it.slot] === it.id
+          return (
+            <div key={it.id} className={'item' + (has ? '' : ' locked') + (eq ? ' equipped' : '')}
+              title={it.desc} onClick={() => has && onEquip(it)}>
+              <ItemSprite id={it.id} />
+              <div className="nm">{it.name}</div>
+              {!has && <div className="muted small">🔒</div>}
+              {eq && <div className="muted small">puesto</div>}
+            </div>
+          )
+        })}
+      </div>
+
+      <h2>Cuenta</h2>
+      <div className="card">
+        {profile.isAdmin ? (
+          <button className="acc" onClick={onAdmin}>🛠 Panel de administración</button>
+        ) : (
+          <>
+            <label>Acceso admin (para el dueño de la app)</label>
+            <input value={code} onChange={e => setCode(e.target.value)} placeholder="Código admin" />
+            <button className="sec" onClick={() => { onUnlockAdmin(code); setCode('') }}>Activar</button>
+          </>
+        )}
+        <div className="spacer" />
+        <button className="sec" onClick={onLogout}>Cerrar sesión</button>
+      </div>
+      <p className="muted small center">SideQuest v0.3 · sincronizado en la nube ☁️</p>
+    </>
+  )
+}
+
+// ---------- Admin ----------
+function Admin({ quests, profile, onBack, onNotify, onChanged }) {
+  const empty = { title: '', sponsor: '', prize: '', freqPerWeek: 3, weeks: 4, image: null }
+  const [form, setForm] = useState(null)
+  const [adminData, setAdminData] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  useEffect(() => { db.fetchAdminData().then(setAdminData) }, [])
+
+  return (
+    <>
+      <div className="topbar">
+        <button className="sec mini" onClick={onBack}>← Volver</button>
+        <h1>Admin</h1>
+      </div>
+      {adminData && <p className="muted">{adminData.userCount} usuarios registrados</p>}
+
+      <h2>Retos de empresas</h2>
+      {quests.map(q => (
+        <div key={q.id} className="card flat">
+          <div className="row">
+            <div className="grow">
+              <b>{q.title}</b>
+              <div className="muted small">{q.sponsor} · 🎁 {q.prize} · {q.freqPerWeek}x/sem · {q.weeks} sem</div>
+            </div>
+            <button className="mini sec" onClick={async () => { await db.setQuestActive(q.id, !q.active); onChanged() }}>
+              {q.active ? 'Pausar' : 'Activar'}
+            </button>
+          </div>
+        </div>
+      ))}
+      {!form && <button onClick={() => setForm({ ...empty })}>+ Nuevo reto de empresa</button>}
+      {form && (
+        <div className="card">
+          <label>Título del reto</label>
+          <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Ej: Entrena 3x por semana" />
+          <label>Comercio patrocinador</label>
+          <input value={form.sponsor} onChange={e => set('sponsor', e.target.value)} placeholder="Ej: MBIG" />
+          <label>Premio</label>
+          <input value={form.prize} onChange={e => set('prize', e.target.value)} placeholder="Ej: Shaker + 15% dcto." />
+          <label>Imagen del reto (logo o foto del premio, opcional)</label>
+          <input type="file" accept="image/*" onChange={async e => {
+            const f = e.target.files?.[0]
+            if (f) set('image', await resizePhoto(f, 640))
+          }} />
+          {form.image && <img src={form.image} alt="" style={{ width: '100%', borderRadius: 8, border: '2px solid var(--dark)', marginBottom: 8, maxHeight: 120, objectFit: 'cover' }} />}
+          <label>Veces por semana: {form.freqPerWeek}</label>
+          <input type="range" min="1" max="7" value={form.freqPerWeek} onChange={e => set('freqPerWeek', +e.target.value)} />
+          <label>Semanas: {form.weeks}</label>
+          <input type="range" min="1" max="8" value={form.weeks} onChange={e => set('weeks', +e.target.value)} />
+          <button disabled={!form.title || !form.sponsor || !form.prize || busy} onClick={async () => {
+            setBusy(true)
+            const { error } = await db.insertQuest(profile.id, form)
+            setBusy(false)
+            if (error) onNotify(error.message)
+            else { setForm(null); onNotify('Reto publicado'); onChanged() }
+          }}>Publicar reto</button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setForm(null)}>Cancelar</button>
+        </div>
+      )}
+
+      <h2>Canjes (todos los usuarios)</h2>
+      {!adminData && <p className="muted">Cargando…</p>}
+      {adminData?.redemptions.length === 0 && <p className="muted">Aún no hay canjes generados.</p>}
+      {adminData?.redemptions.map(r => (
+        <div key={r.id} className="card flat row">
+          <div className="grow">
+            <b className="code" style={{ fontSize: 18, letterSpacing: 3 }}>{r.redeemCode}</b>
+            <div className="muted small">{r.prize} · {r.sponsor} · {r.userName}</div>
+          </div>
+          {r.redeemed
+            ? <span className="chip ok">Usado ✔</span>
+            : <button className="mini" onClick={async () => {
+                await db.markRedeemed(r.id)
+                setAdminData(await db.fetchAdminData())
+              }}>Marcar usado</button>}
+        </div>
+      ))}
+    </>
+  )
+}
