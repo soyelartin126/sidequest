@@ -34,19 +34,85 @@ export function allCheckinDays(goals) {
   return days
 }
 
-// racha global: dias consecutivos con >=1 check-in, terminando hoy o ayer
-export function streak(goals) {
+// racha global: dias consecutivos con >=1 check-in, terminando hoy o ayer.
+// Los dias "congelados" (protegidos por un escudo) mantienen viva la cadena
+// pero NO suman al numero de la racha (igual que el streak-freeze de Duolingo).
+export function streak(goals, frozen = []) {
   const days = allCheckinDays(goals)
   if (days.size === 0) return 0
+  const fset = frozen instanceof Set ? frozen : new Set(frozen)
+  const covered = k => days.has(k) || fset.has(k)
   let count = 0
   const cursor = new Date()
-  if (!days.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1)
-  while (days.has(dayKey(cursor))) {
-    count++
+  if (!covered(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1)
+  while (covered(dayKey(cursor))) {
+    if (days.has(dayKey(cursor))) count++
     cursor.setDate(cursor.getDate() - 1)
   }
   return count
 }
+
+// ---- Escudos de racha (streak freeze) ----
+// Se guardan dentro del jsonb `avatar`: avatar.shields (n) y avatar.frozenDays ([]).
+export const SHIELD_CAP = 3
+
+// Aplica escudos automaticamente para tapar los dias sin check-in entre el
+// ultimo avance y ayer, SOLO si alcanzan para cubrir todos (si no, no gasta).
+// Devuelve el avatar actualizado y cuantos escudos se usaron.
+export function applyShields(goals, avatar = {}) {
+  let shields = avatar.shields ?? 1
+  const frozen = new Set(avatar.frozenDays || [])
+  const days = allCheckinDays(goals)
+  const today = dayKey()
+  if (days.size === 0) return { avatar: { ...avatar, shields, frozenDays: [...frozen] }, used: 0 }
+
+  const lastCheckin = [...days].sort().pop()
+  if (lastCheckin >= today) return { avatar: { ...avatar, shields, frozenDays: [...frozen] }, used: 0 }
+
+  // dias perdidos entre el ultimo check-in y hoy (sin contar hoy ni los ya congelados)
+  const missed = []
+  const cursor = new Date(); cursor.setDate(cursor.getDate() - 1)
+  while (dayKey(cursor) > lastCheckin) {
+    const k = dayKey(cursor)
+    if (!frozen.has(k)) missed.push(k)
+    cursor.setDate(cursor.getDate() - 1)
+  }
+
+  let used = 0
+  if (missed.length > 0 && missed.length <= shields) {
+    missed.forEach(k => frozen.add(k))
+    shields -= missed.length
+    used = missed.length
+  }
+  // limpieza: no guardar dias congelados de hace mas de 90 dias
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 90)
+  const cutKey = dayKey(cutoff)
+  const kept = [...frozen].filter(k => k >= cutKey)
+  return { avatar: { ...avatar, shields, frozenDays: kept }, used }
+}
+
+// suma un escudo respetando el tope
+export const addShield = avatar => ({
+  ...avatar, shields: Math.min(SHIELD_CAP, (avatar.shields ?? 1) + 1),
+})
+
+// ---- Fondos de la app ----
+// 3 gratis + desbloqueables por nivel. Se guarda en avatar.bg (id).
+export const BACKGROUNDS = [
+  { id: 'crema', name: 'Crema', minLevel: 1, css: '#FFF3E0',
+    dot: '#f0dcc0' },
+  { id: 'menta', name: 'Menta', minLevel: 1, css: '#E4F5EC', dot: '#c9e8d6' },
+  { id: 'cielo', name: 'Cielo', minLevel: 1, css: '#E6F0FA', dot: '#cfe0f2' },
+  { id: 'atardecer', name: 'Atardecer', minLevel: 3,
+    css: 'linear-gradient(160deg,#FFE0C2,#FFC9A3 60%,#FFB38A)', dot: 'rgba(74,44,42,.06)' },
+  { id: 'bosque', name: 'Bosque', minLevel: 4,
+    css: 'linear-gradient(160deg,#DDF0D5,#BFE3B3)', dot: 'rgba(74,44,42,.06)' },
+  { id: 'rosa', name: 'Algodón', minLevel: 5,
+    css: 'linear-gradient(160deg,#FCE1EC,#F8C9DD)', dot: 'rgba(74,44,42,.06)' },
+  { id: 'galaxia', name: 'Galaxia', minLevel: 6,
+    css: 'linear-gradient(160deg,#2E2A55,#453C7A)', dot: 'rgba(255,255,255,.10)' },
+]
+export const bgById = id => BACKGROUNDS.find(b => b.id === id) || BACKGROUNDS[0]
 
 // semana actual (Lun-Dom) con estado por dia
 export function weekDots(goals) {

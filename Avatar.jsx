@@ -78,7 +78,15 @@ export const SKINS = ['#FFCC9C', '#F1B47E', '#C68B59', '#8D5524']
 export const HAIRS = ['#5D4037', '#212121', '#B8722C', '#E8B84B', '#9E9E9E', '#7C5CBF']
 export const SHIRTS = ['#F4511E', '#2A9D8F', '#7C5CBF', '#1E88E5', '#D81B60', '#FFC93C']
 
-export default function Avatar({ avatar, equipped = {}, size = 120 }) {
+// boca segun el animo (color labios sobre piel solida, filas 5-6)
+const MOUTH = '#8A4A3A'
+const MOUTHS = {
+  happy: [[5, 5], [5, 8], [6, 6], [6, 7]],   // sonrisa
+  neutral: [[5, 5], [5, 6], [5, 7], [5, 8]], // linea recta
+  sad: [[5, 6], [5, 7], [6, 5], [6, 8]],     // hacia abajo
+}
+
+export default function Avatar({ avatar, equipped = {}, size = 120, mood = 'happy' }) {
   const { skin = SKINS[0], hair = HAIRS[0], shirt = SHIRTS[0] } = avatar || {}
   const cmap = { h: hair, s: skin, e: '#3A2C2A', b: shirt, p: '#4A4A5A', z: '#6D4C41' }
   const cells = []
@@ -87,6 +95,8 @@ export default function Avatar({ avatar, equipped = {}, size = 120 }) {
       if (cmap[c]) cells.push(<rect key={`b${x}-${y}`} x={x} y={y + 2} width="1" height="1" fill={cmap[c]} />)
     })
   })
+  ;(MOUTHS[mood] || MOUTHS.happy).forEach(([y, x], i) =>
+    cells.push(<rect key={`m${i}`} x={x} y={y + 2} width="1" height="1" fill={MOUTH} />))
   Object.values(equipped).forEach(itemId => {
     const ov = OVERLAYS[itemId]
     if (ov) ov.forEach(([y, x, color], i) =>
@@ -97,6 +107,43 @@ export default function Avatar({ avatar, equipped = {}, size = 120 }) {
       shapeRendering="crispEdges" aria-label="avatar">
       {cells}
     </svg>
+  )
+}
+
+// ---- Mascota compañera (slime pixel) que reacciona al animo ----
+const PET_BODY = [
+  '..bbbb..',
+  '.bbbbbb.',
+  'bbbbbbbb',
+  'bbbbbbbb',
+  'bbbbbbbb',
+  '.bbbbbb.',
+  '..bbbb..',
+]
+export const PET_COLORS = ['#8FD3A6', '#F4A259', '#7CA9E6', '#C98BDB', '#F49AC2', '#FFD35C']
+// ojos y boca por animo [fila, col]
+const PET_FACE = {
+  happy: { eyes: [[2, 2], [2, 5]], mouth: [[4, 2], [4, 5], [5, 3], [5, 4]] },
+  neutral: { eyes: [[2, 2], [2, 5]], mouth: [[4, 3], [4, 4]] },
+  sad: { eyes: [[2, 2], [2, 5]], mouth: [[5, 2], [5, 5], [4, 3], [4, 4]] },
+}
+
+export function Pet({ color = PET_COLORS[0], size = 64, mood = 'happy', name }) {
+  const face = PET_FACE[mood] || PET_FACE.happy
+  const cells = []
+  PET_BODY.forEach((row, y) => row.split('').forEach((c, x) => {
+    if (c === 'b') cells.push(<rect key={`p${x}-${y}`} x={x} y={y} width="1" height="1" fill={color} />)
+  }))
+  face.eyes.forEach(([y, x], i) => cells.push(<rect key={`e${i}`} x={x} y={y} width="1" height="1" fill="#2A2A2A" />))
+  face.mouth.forEach(([y, x], i) => cells.push(<rect key={`pm${i}`} x={x} y={y} width="1" height="1" fill="#5A2A2A" />))
+  return (
+    <div className={'pet' + (mood === 'happy' ? ' bob' : '') + (mood === 'sad' ? ' droop' : '')}
+      style={{ textAlign: 'center' }}>
+      <svg viewBox="0 0 8 7" width={size} height={size * 7 / 8} shapeRendering="crispEdges" aria-label="mascota">
+        {cells}
+      </svg>
+      {name && <div className="pet-name">{name}</div>}
+    </div>
   )
 }
 

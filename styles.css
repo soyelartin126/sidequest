@@ -132,3 +132,26 @@ label { font-size: 13px; font-weight: 700; }
   font-family: 'Courier New', monospace; font-size: 30px; font-weight: 900;
   letter-spacing: 6px; color: var(--prim);
 }
+
+/* mascota compañera */
+.pet { display: inline-block; }
+.pet-name { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+.pet.bob svg { animation: bob 1.6s ease-in-out infinite; }
+.pet.droop svg { transform: translateY(2px); opacity: .85; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+/* escudo de racha */
+.shields { display: flex; gap: 4px; align-items: center; margin-top: 6px; }
+.shield-ico { font-size: 15px; }
+.shield-ico.spent { opacity: .28; filter: grayscale(1); }
+
+/* selector de fondos */
+.bgs { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 4px; }
+.bg-opt { width: 52px; text-align: center; cursor: pointer; }
+.bg-swatch {
+  width: 52px; height: 40px; border-radius: 10px; border: 3px solid transparent;
+  box-shadow: 3px 3px 0 rgba(74,44,42,.18);
+}
+.bg-opt.sel .bg-swatch { border-color: var(--dark); }
+.bg-opt.locked { opacity: .5; cursor: default; }
+.bg-opt .bg-nm { font-size: 10.5px; font-weight: 700; margin-top: 3px; color: var(--muted); }

@@ -1,11 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Avatar, { ItemSprite, PixelCode, SKINS, HAIRS, SHIRTS } from './Avatar.jsx'
+import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, SKINS, HAIRS, SHIRTS } from './Avatar.jsx'
 import * as db from './supabase.js'
 import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
   makeRedeemCode, ITEMS, earnedItems, itemById, eligibleLoot, tierForDays, TIERS, DURATIONS, goalDays,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
+  applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById,
 } from './game.js'
+
+// animo del personaje/mascota segun estado del jugador
+function moodOf(goals, stk, bestStreak) {
+  if (stk === 0 && (bestStreak || 0) > 0) return 'sad'
+  if (goals.some(g => canCheckinToday(g))) return 'neutral'
+  return 'happy'
+}
 
 const ADMIN_CODE = 'PIXEL2026'
 const THEMES = ['Familia', 'Trabajo', 'Amigos', 'Estudio', 'Deporte', 'Otro']
@@ -65,6 +73,14 @@ export default function App() {
     const before = data ? earnedItems(data) : null
     const next = await db.fetchState(session.user.id)
     if (next.error) { notify('Error de conexión: ' + next.error.message); return }
+    // escudos de racha: tapan automaticamente los dias perdidos si alcanzan
+    const sh = applyShields(next.goals, next.profile.avatar || {})
+    if (sh.used > 0) {
+      const p = { ...next.profile, avatar: sh.avatar }
+      await db.saveProfile(p)
+      next.profile = p
+      setTimeout(() => notify(`🛡 Escudo de racha usado · tu racha sigue viva`), 700)
+    }
     if (announce && before) {
       const after = earnedItems(next)
       const nuevos = [...after].filter(id => !before.has(id))
@@ -84,9 +100,21 @@ export default function App() {
 
   const { profile, goals, quests, groups } = data
   const lvl = levelFor(profile.xp)
-  const stk = streak(goals)
+  const stk = streak(goals, profile.avatar?.frozenDays || [])
   const earned = earnedItems(data)
   const pendingRedeem = goals.filter(g => g.redeemCode && !g.redeemed)
+  const mood = moodOf(goals, stk, profile.bestStreak)
+  const bg = bgById(profile.avatar?.bg)
+  const isSolidBg = bg.css.startsWith('#')
+  const appStyle = {
+    minHeight: '100dvh',
+    backgroundColor: isSolidBg ? bg.css : undefined,
+    backgroundImage: isSolidBg
+      ? `radial-gradient(${bg.dot} 1.5px, transparent 1.5px)`
+      : `radial-gradient(${bg.dot} 1.5px, transparent 1.5px), ${bg.css}`,
+    backgroundSize: '26px 26px, 100% 100%',
+    backgroundAttachment: 'fixed',
+  }
 
   const doCheckin = async (goal, note, photoFile) => {
     if (!canCheckinToday(goal)) return
@@ -97,8 +125,11 @@ export default function App() {
     if (willComplete) {
       p.xp += goal.sponsor ? XP_QUEST_COMPLETE : XP_GOAL_COMPLETE
       if (goal.rewardItem && !p.items.includes(goal.rewardItem)) p.items = [...p.items, goal.rewardItem]
+      const beforeSh = p.avatar?.shields ?? 1
+      p.avatar = addShield(p.avatar || {})
       await db.completeGoal({ ...goal, redeemCode: goal.sponsor ? makeRedeemCode() : null })
       notify(goal.sponsor ? `¡Reto completado! Tienes un canje en ${goal.sponsor}` : '¡Misión completada!')
+      if (p.avatar.shields > beforeSh) setTimeout(() => notify('🛡 +1 escudo de racha'), 1400)
     } else {
       notify(`Check-in listo · +${XP_CHECKIN} XP`)
     }
@@ -109,7 +140,7 @@ export default function App() {
   }
 
   const screens = {
-    home: <Home profile={profile} lvl={lvl} stk={stk} goals={goals}
+    home: <Home profile={profile} lvl={lvl} stk={stk} goals={goals} mood={mood}
       pendingRedeem={pendingRedeem}
       onGoal={g => setView({ name: 'goal', id: g.id })}
       onRedeem={g => setView({ name: 'redeem', id: g.id })}
@@ -127,7 +158,7 @@ export default function App() {
     groups: <Groups groups={groups} profile={profile} onNotify={notify}
       onOpen={g => setView({ name: 'group', id: g.id })}
       onChanged={() => refresh()} />,
-    profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals}
+    profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals} mood={mood}
       onAvatar={async av => { await db.saveProfile({ ...profile, avatar: av }); refresh() }}
       onEquip={async item => {
         const eq = { ...(profile.equipped || {}) }
@@ -171,7 +202,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app" style={appStyle}>
       {toast && <div className="toast">{toast}</div>}
       {overlay || screens[tab]}
       {!overlay && (
@@ -282,16 +313,18 @@ function AuthScreen({ onNotify, toast }) {
 }
 
 // ---------- Inicio ----------
-function Home({ profile, lvl, stk, goals, pendingRedeem, onGoal, onRedeem, onNew }) {
+function Home({ profile, lvl, stk, goals, mood = 'happy', pendingRedeem, onGoal, onRedeem, onNew }) {
   const active = goals.filter(g => g.status === 'active')
   const dots = weekDots(goals)
+  const shields = profile.avatar?.shields ?? 1
+  const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
   return (
     <>
       <div className="logo">SIDEQUEST</div>
       <div className="tagline">gamifica tu vida</div>
 
       <div className="card row">
-        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} />
+        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} mood={mood} />
         <div className="grow">
           <h1>{profile.name}</h1>
           <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
@@ -313,7 +346,14 @@ function Home({ profile, lvl, stk, goals, pendingRedeem, onGoal, onRedeem, onNew
                 <div key={i} className={'dot' + (d.done ? ' on' : '') + (d.future ? ' future' : '')}>{d.label}</div>
               ))}
             </div>
+            <div className="shields" title="Los escudos protegen tu racha si te saltas un día">
+              {Array.from({ length: SHIELD_CAP }, (_, i) => (
+                <span key={i} className={'shield-ico' + (i < shields ? '' : ' spent')}>🛡</span>
+              ))}
+              <span className="muted small">{shields}/{SHIELD_CAP} escudos</span>
+            </div>
           </div>
+          <Pet color={petColor} size={62} mood={mood} name="Pixi" />
         </div>
       </div>
 
@@ -763,10 +803,12 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
 }
 
 // ---------- Perfil ----------
-function Profile({ profile, lvl, earned, goals, onAvatar, onEquip, onAdmin, onUnlockAdmin, onLogout }) {
+function Profile({ profile, lvl, earned, goals, mood = 'happy', onAvatar, onEquip, onAdmin, onUnlockAdmin, onLogout }) {
   const [editing, setEditing] = useState(false)
   const [code, setCode] = useState('')
   const completed = goals.filter(g => g.status === 'completed').length
+  const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
+  const curBg = profile.avatar?.bg || 'crema'
   const Sw = ({ colors, k }) => (
     <div className="swatches">
       {colors.map(c => (
@@ -778,7 +820,10 @@ function Profile({ profile, lvl, earned, goals, onAvatar, onEquip, onAdmin, onUn
   return (
     <>
       <div className="card center">
-        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={120} />
+        <div className="row" style={{ justifyContent: 'center' }}>
+          <Avatar avatar={profile.avatar} equipped={profile.equipped} size={120} mood={mood} />
+          <Pet color={petColor} size={70} mood={mood} name="Pixi" />
+        </div>
         <h1>{profile.name}</h1>
         <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
         <div className="muted small">
@@ -795,8 +840,32 @@ function Profile({ profile, lvl, earned, goals, onAvatar, onEquip, onAdmin, onUn
           <label>Piel</label><Sw colors={SKINS} k="skin" />
           <label>Pelo</label><Sw colors={HAIRS} k="hair" />
           <label>Polera</label><Sw colors={SHIRTS} k="shirt" />
+          <label>Color de tu mascota</label>
+          <div className="swatches">
+            {PET_COLORS.map(c => (
+              <div key={c} className={'swatch' + (petColor === c ? ' sel' : '')}
+                style={{ background: c }} onClick={() => onAvatar({ ...profile.avatar, petColor: c })} />
+            ))}
+          </div>
         </div>
       )}
+
+      <h2>Fondo de la app</h2>
+      <div className="card">
+        <p className="muted small">3 gratis para todos. Los demás se desbloquean subiendo de nivel.</p>
+        <div className="bgs">
+          {BACKGROUNDS.map(b => {
+            const locked = lvl.level < b.minLevel
+            return (
+              <div key={b.id} className={'bg-opt' + (curBg === b.id ? ' sel' : '') + (locked ? ' locked' : '')}
+                onClick={() => !locked && onAvatar({ ...profile.avatar, bg: b.id })}>
+                <div className="bg-swatch" style={{ background: b.css }} />
+                <div className="bg-nm">{locked ? `🔒 Nv ${b.minLevel}` : b.name}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       <h2>Inventario</h2>
       <p className="muted small">
