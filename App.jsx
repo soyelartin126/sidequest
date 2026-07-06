@@ -322,7 +322,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', pendingRedeem, onGoal,
     <>
       <Cover id={coverById(profile.avatar?.cover).id} greeting={`Hola, ${profile.name}`} sub="gamifica tu vida" />
 
-      <div className="card row">
+      <div className="card row lift">
         <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} mood={mood} />
         <div className="grow">
           <h1>{profile.name}</h1>
