@@ -79,9 +79,10 @@ export async function fetchState(userId) {
 }
 
 // ---------- escrituras ----------
+// nota: is_admin NO se escribe desde el cliente (solo se controla en la BD).
 export const saveProfile = p => sb.from('profiles').update({
   name: p.name, phone: p.phone, avatar: p.avatar, equipped: p.equipped,
-  items: p.items, xp: p.xp, best_streak: p.bestStreak, is_admin: p.isAdmin,
+  items: p.items, xp: p.xp, best_streak: p.bestStreak,
 }).eq('id', p.id)
 
 export const insertGoal = (userId, g) => sb.from('goals').insert({
@@ -144,17 +145,43 @@ export const fetchQuestGoals = questIds => sb.from('goals')
 
 // ---------- admin (ve todo gracias a las policies) ----------
 export async function fetchAdminData() {
-  const [redemptions, users] = await Promise.all([
+  const [redemptionsQ, profilesQ, goalsQ] = await Promise.all([
     sb.from('goals').select('id, title, sponsor, prize, redeem_code, redeemed, user_id')
       .not('redeem_code', 'is', null).order('completed_at', { ascending: false }),
-    sb.from('profiles').select('id, name, xp'),
+    sb.from('profiles').select('id, name, xp, best_streak, avatar'),
+    sb.from('goals').select('user_id, status'),
   ])
-  const names = Object.fromEntries((users.data || []).map(u => [u.id, u.name]))
+  const profiles = profilesQ.data || []
+  const goals = goalsQ.data || []
+  const names = Object.fromEntries(profiles.map(u => [u.id, u.name]))
+  const byUser = {}
+  goals.forEach(g => { (byUser[g.user_id] = byUser[g.user_id] || []).push(g) })
+
+  const users = profiles.map(u => {
+    const gs = byUser[u.id] || []
+    return {
+      id: u.id, name: u.name, xp: u.xp, bestStreak: u.best_streak || 0,
+      interests: (u.avatar && u.avatar.interests) || [],
+      goals: gs.length, active: gs.filter(g => g.status === 'active').length,
+      completed: gs.filter(g => g.status === 'completed').length,
+    }
+  }).sort((a, b) => b.xp - a.xp)
+
+  const redemptions = (redemptionsQ.data || []).map(r => ({
+    id: r.id, title: r.title, sponsor: r.sponsor, prize: r.prize,
+    redeemCode: r.redeem_code, redeemed: r.redeemed, userName: names[r.user_id] || '—',
+  }))
+
   return {
-    redemptions: (redemptions.data || []).map(r => ({
-      id: r.id, title: r.title, sponsor: r.sponsor, prize: r.prize,
-      redeemCode: r.redeem_code, redeemed: r.redeemed, userName: names[r.user_id] || '—',
-    })),
-    userCount: (users.data || []).length,
+    users, redemptions, userCount: profiles.length,
+    metrics: {
+      totalUsers: profiles.length,
+      activeUsers: users.filter(u => u.active > 0).length,
+      goalsTotal: goals.length,
+      goalsCompleted: goals.filter(g => g.status === 'completed').length,
+      secondMission: users.filter(u => u.goals >= 2).length,
+      redGen: redemptions.length,
+      redUsed: redemptions.filter(r => r.redeemed).length,
+    },
   }
 }

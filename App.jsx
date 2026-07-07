@@ -15,7 +15,6 @@ function moodOf(goals, stk, bestStreak) {
   return 'happy'
 }
 
-const ADMIN_CODE = 'PIXEL2026'
 const THEMES = ['Familia', 'Trabajo', 'Amigos', 'Estudio', 'Deporte', 'Otro']
 
 function resizePhoto(file, max = 320) {
@@ -324,12 +323,6 @@ export default function App() {
         await db.saveProfile({ ...profile, equipped: eq }); refresh()
       }}
       onAdmin={() => setView({ name: 'admin' })}
-      onUnlockAdmin={async code => {
-        if (code === ADMIN_CODE) {
-          await db.saveProfile({ ...profile, isAdmin: true })
-          notify('Modo admin activado'); refresh()
-        } else notify('Código incorrecto')
-      }}
       onLogout={() => db.signOut()} />,
   }
 
@@ -990,9 +983,8 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
 }
 
 // ---------- Perfil ----------
-function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onUnlockAdmin, onLogout }) {
+function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onLogout }) {
   const [editing, setEditing] = useState(false)
-  const [code, setCode] = useState('')
   const completed = goals.filter(g => g.status === 'completed').length
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
   const curBg = profile.avatar?.bg || 'niebla'
@@ -1147,16 +1139,12 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light',
 
       <h2>Cuenta</h2>
       <div className="card">
-        {profile.isAdmin ? (
-          <button className="acc" onClick={onAdmin}>🛠 Panel de administración</button>
-        ) : (
+        {profile.isAdmin && (
           <>
-            <label>Acceso admin (para el dueño de la app)</label>
-            <input value={code} onChange={e => setCode(e.target.value)} placeholder="Código admin" />
-            <button className="sec" onClick={() => { onUnlockAdmin(code); setCode('') }}>Activar</button>
+            <button className="acc" onClick={onAdmin}>🛠 Panel de administración</button>
+            <div className="spacer" />
           </>
         )}
-        <div className="spacer" />
         <button className="sec" onClick={onLogout}>Cerrar sesión</button>
       </div>
       <p className="muted small center">SideQuest v0.3 · sincronizado en la nube ☁️</p>
@@ -1180,7 +1168,23 @@ function Admin({ quests, profile, onBack, onNotify, onChanged }) {
         <button className="sec mini" onClick={onBack}>← Volver</button>
         <h1>Admin</h1>
       </div>
-      {adminData && <p className="muted">{adminData.userCount} usuarios registrados</p>}
+      {adminData && (
+        <div className="kpis">
+          {[
+            ['Usuarios', adminData.metrics.totalUsers],
+            ['Activos', adminData.metrics.activeUsers],
+            ['2ª misión', adminData.metrics.secondMission],
+            ['Misiones', adminData.metrics.goalsTotal],
+            ['Completadas', adminData.metrics.goalsCompleted],
+            ['Canjes', `${adminData.metrics.redUsed}/${adminData.metrics.redGen}`],
+          ].map(([label, val]) => (
+            <div key={label} className="kpi">
+              <div className="kpi-val">{val}</div>
+              <div className="kpi-lbl">{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <h2>Retos de empresas</h2>
       {quests.map(q => (
@@ -1190,9 +1194,14 @@ function Admin({ quests, profile, onBack, onNotify, onChanged }) {
               <b>{q.title}</b>
               <div className="muted small">{q.sponsor} · 🎁 {q.prize} · {q.freqPerWeek}x/sem · {q.weeks} sem</div>
             </div>
-            <button className="mini sec" onClick={async () => { await db.setQuestActive(q.id, !q.active); onChanged() }}>
-              {q.active ? 'Pausar' : 'Activar'}
-            </button>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button className="mini sec" onClick={async () => { await db.setQuestActive(q.id, !q.active); onChanged() }}>
+                {q.active ? 'Pausar' : 'Activar'}
+              </button>
+              <button className="mini" onClick={() => onNotify('El anuncio por correo se activará al conectar el envío')}>
+                Anunciar
+              </button>
+            </div>
           </div>
         </div>
       ))}
@@ -1226,6 +1235,20 @@ function Admin({ quests, profile, onBack, onNotify, onChanged }) {
           <button className="sec" onClick={() => setForm(null)}>Cancelar</button>
         </div>
       )}
+
+      <h2>Usuarios ({adminData?.users.length || 0})</h2>
+      {!adminData && <p className="muted">Cargando…</p>}
+      {adminData?.users.map(u => (
+        <div key={u.id} className="card flat row">
+          <div className="grow">
+            <b>{u.name}</b>
+            <div className="muted small">
+              {u.xp} XP · {u.goals} misiones · {u.completed} completadas · racha máx {u.bestStreak}
+              {u.interests.length > 0 && ` · ${u.interests.join(', ')}`}
+            </div>
+          </div>
+        </div>
+      ))}
 
       <h2>Canjes (todos los usuarios)</h2>
       {!adminData && <p className="muted">Cargando…</p>}
