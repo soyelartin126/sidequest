@@ -203,6 +203,13 @@ label { font-size: 13px; font-weight: 700; }
 }
 .pwd-eye:active { transform: none; }
 
+.link-btn {
+  width: 100%; background: none; border: none; box-shadow: none;
+  color: var(--muted); font-size: 13px; font-weight: 600; padding: 12px 0 2px;
+  text-decoration: underline;
+}
+.link-btn:active { transform: none; }
+
 /* toggle (modo oscuro) */
 .toggle {
   width: 52px; height: 30px; border-radius: 999px; padding: 0; flex: none;

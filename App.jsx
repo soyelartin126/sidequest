@@ -153,6 +153,31 @@ function Onboarding({ profile, onFinish }) {
   )
 }
 
+// ---------- Pantalla de nueva contraseña (tras el link de recuperación) ----------
+function ResetPassword({ toast, onNotify, onDone }) {
+  const [pw, setPw] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="app">
+      {toast && <div className="toast">{toast}</div>}
+      <div className="logo">SIDEQUEST</div>
+      <div className="card">
+        <h1>Nueva contraseña</h1>
+        <p className="muted small">Elige una contraseña nueva para tu cuenta.</p>
+        <label>Nueva contraseña (mínimo 6)</label>
+        <Pwd value={pw} onChange={e => setPw(e.target.value)} />
+        <button disabled={busy || pw.length < 6} onClick={async () => {
+          setBusy(true)
+          const { error } = await db.updatePassword(pw)
+          setBusy(false)
+          if (error) onNotify(error.message)
+          else onDone()
+        }}>{busy ? 'Guardando…' : 'Guardar contraseña'}</button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined) // undefined = cargando
   const [data, setData] = useState(null)
@@ -164,6 +189,7 @@ export default function App() {
     try { return localStorage.getItem('sq-theme') || 'light' } catch { return 'light' }
   })
   const [onbDone, setOnbDone] = useState(false)
+  const [recovery, setRecovery] = useState(false)
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     try { localStorage.setItem('sq-theme', theme) } catch { /* noop */ }
@@ -177,7 +203,10 @@ export default function App() {
 
   useEffect(() => {
     db.getSession().then(setSession)
-    const { data: sub } = db.onAuthChange(setSession)
+    const { data: sub } = db.onAuthChange((s, event) => {
+      setSession(s)
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
@@ -207,6 +236,8 @@ export default function App() {
 
   useEffect(() => { if (session?.user) refresh() }, [session?.user?.id])
 
+  if (recovery) return <ResetPassword toast={toast} onNotify={notify}
+    onDone={() => { setRecovery(false); notify('Contraseña actualizada'); }} />
   if (session === undefined) return <div className="app center"><div className="logo">SIDEQUEST</div><p className="muted">Cargando…</p></div>
   if (!session) return <AuthScreen onNotify={notify} toast={toast} />
   if (!data) return <div className="app center"><div className="logo">SIDEQUEST</div><p className="muted">Cargando tu aventura…</p></div>
@@ -394,6 +425,25 @@ function AuthScreen({ onNotify, toast }) {
           </button>
           <div className="spacer" />
           <button className="sec" onClick={() => setMode('signup')}>Crear cuenta nueva</button>
+          <button className="link-btn" onClick={() => setMode('forgot')}>¿Olvidaste tu contraseña?</button>
+        </div>
+      )}
+
+      {mode === 'forgot' && (
+        <div className="card">
+          <h1>Recuperar contraseña</h1>
+          <p className="muted small">Te enviaremos un enlace a tu correo para crear una nueva contraseña.</p>
+          <label>Correo</label>
+          <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="tu@correo.com" />
+          <button disabled={busy || !form.email.includes('@')} onClick={async () => {
+            setBusy(true)
+            const { error } = await db.resetPassword(form.email)
+            setBusy(false)
+            onNotify(error ? error.message : 'Si el correo existe, te enviamos un enlace')
+            if (!error) setMode('login')
+          }}>{busy ? 'Enviando…' : 'Enviar enlace'}</button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setMode('login')}>← Volver</button>
         </div>
       )}
 

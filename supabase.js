@@ -31,9 +31,12 @@ const rowToQuest = r => ({
 
 // ---------- auth ----------
 export const getSession = () => sb.auth.getSession().then(({ data }) => data.session)
-export const onAuthChange = cb => sb.auth.onAuthStateChange((_e, s) => cb(s))
+export const onAuthChange = cb => sb.auth.onAuthStateChange((event, s) => cb(s, event))
 export const signIn = (email, password) => sb.auth.signInWithPassword({ email, password })
 export const signOut = () => sb.auth.signOut()
+export const resetPassword = email =>
+  sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin })
+export const updatePassword = password => sb.auth.updateUser({ password })
 
 export async function signUp({ email, password, name, phone, avatar }) {
   const { data, error } = await sb.auth.signUp({ email, password })
