@@ -84,11 +84,11 @@ function Onboarding({ profile, onFinish }) {
 
   if (step === 0) return (
     <>
-      <div className="logo">SIDEQUEST</div>
+      <div className="logo">LevelApp</div>
       <div className="card center">
         <Avatar avatar={profile.avatar} equipped={profile.equipped} size={92} />
         <h1>¡Hola, {profile.name}!</h1>
-        <p className="muted">Así funciona SideQuest</p>
+        <p className="muted">Así funciona LevelApp</p>
         <div className="how">
           {how.map(([e, t, d]) => (
             <div key={t} className="how-row">
@@ -105,7 +105,7 @@ function Onboarding({ profile, onFinish }) {
 
   if (step === 1) return (
     <>
-      <div className="logo">SIDEQUEST</div>
+      <div className="logo">LevelApp</div>
       <div className="card">
         <h1>¿Qué quieres mejorar?</h1>
         <p className="muted small">Elige tus intereses y te sugiero misiones para empezar.</p>
@@ -125,7 +125,7 @@ function Onboarding({ profile, onFinish }) {
 
   return (
     <>
-      <div className="logo">SIDEQUEST</div>
+      <div className="logo">LevelApp</div>
       <div className="card">
         <h1>Misiones sugeridas</h1>
         <p className="muted small">Toca las que quieras empezar. Después puedes editarlas o crear más.</p>
@@ -160,7 +160,7 @@ function ResetPassword({ toast, onNotify, onDone }) {
   return (
     <div className="app">
       {toast && <div className="toast">{toast}</div>}
-      <div className="logo">SIDEQUEST</div>
+      <div className="logo">LevelApp</div>
       <div className="card">
         <h1>Nueva contraseña</h1>
         <p className="muted small">Elige una contraseña nueva para tu cuenta.</p>
@@ -238,9 +238,9 @@ export default function App() {
 
   if (recovery) return <ResetPassword toast={toast} onNotify={notify}
     onDone={() => { setRecovery(false); notify('Contraseña actualizada'); }} />
-  if (session === undefined) return <div className="app center"><div className="logo">SIDEQUEST</div><p className="muted">Cargando…</p></div>
+  if (session === undefined) return <div className="app center"><div className="logo">LevelApp</div><p className="muted">Cargando…</p></div>
   if (!session) return <AuthScreen onNotify={notify} toast={toast} />
-  if (!data) return <div className="app center"><div className="logo">SIDEQUEST</div><p className="muted">Cargando tu aventura…</p></div>
+  if (!data) return <div className="app center"><div className="logo">LevelApp</div><p className="muted">Cargando tu aventura…</p></div>
 
   const { profile, goals, quests, groups, banners = [] } = data
   const lvl = levelFor(profile.xp)
@@ -419,7 +419,7 @@ function AuthScreen({ onNotify, toast }) {
   return (
     <div className="app">
       {toast && <div className="toast">{toast}</div>}
-      <div className="logo">SIDEQUEST</div>
+      <div className="logo">LevelApp</div>
       <div className="tagline">gamifica tu vida · cumple objetivos · gana premios reales</div>
 
       {mode === 'login' && (
@@ -1206,7 +1206,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
         )}
         <button className="sec" onClick={onLogout}>Cerrar sesión</button>
       </div>
-      <p className="muted small center">SideQuest v0.3 · sincronizado en la nube ☁️</p>
+      <p className="muted small center">LevelApp v0.3 · sincronizado en la nube ☁️</p>
     </>
   )
 }
