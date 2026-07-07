@@ -318,12 +318,14 @@ function coverScene(id) {
   }
 }
 
-export function Cover({ id = COVERS[0].id, greeting, sub }) {
+export function Cover({ id = COVERS[0].id, image, greeting, sub }) {
   return (
     <div className="cover">
-      <svg viewBox="0 0 300 140" preserveAspectRatio="xMidYMid slice" className="cover-svg" aria-hidden="true">
-        {coverScene(id)}
-      </svg>
+      {image
+        ? <img className="cover-svg" src={image} alt="" style={{ objectFit: 'cover' }} />
+        : <svg viewBox="0 0 300 140" preserveAspectRatio="xMidYMid slice" className="cover-svg" aria-hidden="true">
+            {coverScene(id)}
+          </svg>}
       <div className="cover-scrim" />
       {greeting && (
         <div className="cover-text">
@@ -335,7 +337,8 @@ export function Cover({ id = COVERS[0].id, greeting, sub }) {
   )
 }
 
-export function CoverThumb({ id }) {
+export function CoverThumb({ id, image }) {
+  if (image) return <img className="cover-thumb-svg" src={image} alt="" style={{ objectFit: 'cover' }} />
   return (
     <svg viewBox="0 0 300 140" preserveAspectRatio="xMidYMid slice" className="cover-thumb-svg" aria-hidden="true">
       {coverScene(id)}

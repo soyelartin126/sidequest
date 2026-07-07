@@ -50,11 +50,12 @@ export async function signUp({ email, password, name, phone, avatar }) {
 
 // ---------- carga de estado ----------
 export async function fetchState(userId) {
-  const [p, g, q, gm] = await Promise.all([
+  const [p, g, q, gm, si] = await Promise.all([
     sb.from('profiles').select('*').eq('id', userId).single(),
     sb.from('goals').select('*, checkins(*)').eq('user_id', userId).order('created_at'),
     sb.from('quests').select('*').order('created_at'),
     sb.from('group_members').select('role, groups(*)').eq('user_id', userId),
+    sb.from('store_items').select('*').eq('active', true).order('created_at'),
   ])
   if (p.error) return { error: p.error }
   const groups = []
@@ -75,8 +76,15 @@ export async function fetchState(userId) {
     goals: (g.data || []).map(rowToGoal),
     quests: (q.data || []).map(rowToQuest),
     groups,
+    banners: (si.data || []).filter(r => r.kind === 'banner').map(r => ({
+      id: r.id, name: r.name, image: r.image_url, price: r.price,
+    })),
   }
 }
+
+// ---------- tienda (banners gestionados por admin) ----------
+export const insertStoreItem = row => sb.from('store_items').insert(row)
+export const deleteStoreItem = id => sb.from('store_items').update({ active: false }).eq('id', id)
 
 // ---------- escrituras ----------
 // nota: is_admin NO se escribe desde el cliente (solo se controla en la BD).

@@ -242,7 +242,7 @@ export default function App() {
   if (!session) return <AuthScreen onNotify={notify} toast={toast} />
   if (!data) return <div className="app center"><div className="logo">SIDEQUEST</div><p className="muted">Cargando tu aventura…</p></div>
 
-  const { profile, goals, quests, groups } = data
+  const { profile, goals, quests, groups, banners = [] } = data
   const lvl = levelFor(profile.xp)
   const stk = streak(goals, profile.avatar?.frozenDays || [])
   const earned = earnedItems(data)
@@ -299,7 +299,7 @@ export default function App() {
   }
 
   const screens = {
-    home: <Home profile={profile} lvl={lvl} stk={stk} goals={goals} mood={mood}
+    home: <Home profile={profile} lvl={lvl} stk={stk} goals={goals} mood={mood} banners={banners}
       pendingRedeem={pendingRedeem}
       onGoal={g => setView({ name: 'goal', id: g.id })}
       onRedeem={g => setView({ name: 'redeem', id: g.id })}
@@ -318,7 +318,7 @@ export default function App() {
     groups: <Groups groups={groups} profile={profile} onNotify={notify}
       onOpen={g => setView({ name: 'group', id: g.id })}
       onChanged={() => refresh()} />,
-    profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals} mood={mood}
+    profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals} mood={mood} banners={banners}
       theme={theme} onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
       onAvatar={async av => { await db.saveProfile({ ...profile, avatar: av }); refresh() }}
       onEquip={async item => {
@@ -352,10 +352,10 @@ export default function App() {
       quests={quests.filter(q => q.groupId === g.id)}
       onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
   } else if (view?.name === 'admin') {
-    overlay = <Admin quests={quests.filter(q => !q.groupId)} profile={profile}
+    overlay = <Admin quests={quests.filter(q => !q.groupId)} profile={profile} banners={banners}
       onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
   } else if (view?.name === 'store') {
-    overlay = <Store profile={profile} lvl={lvl} earned={earned} onBack={() => setView(null)}
+    overlay = <Store profile={profile} lvl={lvl} earned={earned} banners={banners} onBack={() => setView(null)}
       onBuy={async (kind, id, price) => {
         const coins = profile.avatar?.coins || 0
         if (coins < price) { notify('No te alcanzan las monedas'); return }
@@ -499,15 +499,16 @@ function AuthScreen({ onNotify, toast }) {
 }
 
 // ---------- Inicio ----------
-function Home({ profile, lvl, stk, goals, mood = 'happy', pendingRedeem, onGoal, onRedeem, onNew, onStore }) {
+function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingRedeem, onGoal, onRedeem, onNew, onStore }) {
   const active = goals.filter(g => g.status === 'active')
   const dots = weekDots(goals)
   const shields = profile.avatar?.shields ?? 1
   const coins = profile.avatar?.coins || 0
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
+  const coverBanner = banners.find(b => b.id === profile.avatar?.cover)
   return (
     <>
-      <Cover id={coverById(profile.avatar?.cover).id} greeting={`Hola, ${profile.name}`} sub="gamifica tu vida" />
+      <Cover id={coverById(profile.avatar?.cover).id} image={coverBanner?.image} greeting={`Hola, ${profile.name}`} sub="gamifica tu vida" />
 
       <div className="card row lift">
         <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} mood={mood} />
@@ -1034,7 +1035,7 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
 }
 
 // ---------- Perfil ----------
-function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onLogout }) {
+function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onLogout }) {
   const [editing, setEditing] = useState(false)
   const completed = goals.filter(g => g.status === 'completed').length
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
@@ -1108,6 +1109,13 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light',
               </div>
             )
           })}
+          {banners.filter(b => (profile.avatar?.ownedCovers || []).includes(b.id)).map(b => (
+            <div key={b.id} className={'cover-opt' + (curCover === b.id ? ' sel' : '')}
+              onClick={() => onAvatar({ ...profile.avatar, cover: b.id })}>
+              <div className="cover-thumb"><CoverThumb image={b.image} /></div>
+              <div className="bg-nm">{b.name || 'Banner'}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -1204,7 +1212,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light',
 }
 
 // ---------- Tienda (comprar con monedas) ----------
-function Store({ profile, lvl, earned, onBack, onBuy }) {
+function Store({ profile, lvl, earned, banners = [], onBack, onBuy }) {
   const coins = profile.avatar?.coins || 0
   const ownedCovers = profile.avatar?.ownedCovers || []
   const loot = ITEMS.filter(it => it.kind === 'loot')
@@ -1253,16 +1261,33 @@ function Store({ profile, lvl, earned, onBack, onBuy }) {
         })}
       </div>
       <p className="muted small">Las portadas también se desbloquean gratis al subir de nivel; aquí puedes comprarlas antes.</p>
+
+      {banners.length > 0 && <h2>Banners</h2>}
+      {banners.map(b => {
+        const owned = ownedCovers.includes(b.id)
+        return (
+          <div key={b.id} className="card flat row">
+            <div style={{ width: 78, height: 48, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+              <img src={b.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <div className="grow"><b>{b.name || 'Banner'}</b></div>
+            {owned
+              ? <span className="chip ok">Comprado ✔</span>
+              : <button className="mini" disabled={coins < b.price} onClick={() => onBuy('cover', b.id, b.price)}>🪙 {b.price}</button>}
+          </div>
+        )
+      })}
     </>
   )
 }
 
 // ---------- Admin ----------
-function Admin({ quests, profile, onBack, onNotify, onChanged }) {
+function Admin({ quests, profile, banners = [], onBack, onNotify, onChanged }) {
   const empty = { title: '', sponsor: '', prize: '', freqPerWeek: 3, weeks: 4, image: null }
   const [form, setForm] = useState(null)
   const [adminData, setAdminData] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [bform, setBform] = useState({ name: '', price: 120, image: null })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   useEffect(() => { db.fetchAdminData().then(setAdminData) }, [])
@@ -1340,6 +1365,36 @@ function Admin({ quests, profile, onBack, onNotify, onChanged }) {
           <button className="sec" onClick={() => setForm(null)}>Cancelar</button>
         </div>
       )}
+
+      <h2>Banners de la tienda</h2>
+      {banners.map(b => (
+        <div key={b.id} className="card flat row">
+          <div style={{ width: 78, height: 48, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+            <img src={b.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          <div className="grow"><b>{b.name || 'Banner'}</b><div className="muted small">🪙 {b.price}</div></div>
+          <button className="mini sec" onClick={async () => { await db.deleteStoreItem(b.id); onChanged() }}>Quitar</button>
+        </div>
+      ))}
+      <div className="card">
+        <label>Nombre del banner</label>
+        <input value={bform.name} onChange={e => setBform(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Verano MBIG" />
+        <label>Precio (monedas)</label>
+        <input type="number" value={bform.price} onChange={e => setBform(f => ({ ...f, price: +e.target.value }))} />
+        <label>Imagen del banner</label>
+        <input type="file" accept="image/*" onChange={async e => {
+          const f = e.target.files?.[0]
+          if (f) { const img = await resizePhoto(f, 800); setBform(b => ({ ...b, image: img })) }
+        }} />
+        {bform.image && <img src={bform.image} alt="" style={{ width: '100%', borderRadius: 14, marginBottom: 8, maxHeight: 120, objectFit: 'cover' }} />}
+        <button disabled={!bform.image || busy} onClick={async () => {
+          setBusy(true)
+          const { error } = await db.insertStoreItem({ kind: 'banner', name: bform.name || null, image_url: bform.image, price: bform.price || 100 })
+          setBusy(false)
+          if (error) onNotify(error.message)
+          else { setBform({ name: '', price: 120, image: null }); onNotify('Banner creado'); onChanged() }
+        }}>Crear banner</button>
+      </div>
 
       <h2>Usuarios ({adminData?.users.length || 0})</h2>
       {!adminData && <p className="muted">Cargando…</p>}
