@@ -1259,24 +1259,20 @@ function Store({ profile, lvl, earned, banners = [], onBack, onBuy }) {
             </div>
           )
         })}
+        {banners.map(b => {
+          const owned = ownedCovers.includes(b.id)
+          return (
+            <div key={b.id} className="cover-opt">
+              <div className="cover-thumb"><CoverThumb image={b.image} /></div>
+              {owned
+                ? <div className="bg-nm">Comprada ✔</div>
+                : <button className="mini" style={{ marginTop: 4, padding: '5px 8px', fontSize: 11, width: '100%' }}
+                    disabled={coins < b.price} onClick={() => onBuy('cover', b.id, b.price)}>🪙 {b.price}</button>}
+            </div>
+          )
+        })}
       </div>
       <p className="muted small">Las portadas también se desbloquean gratis al subir de nivel; aquí puedes comprarlas antes.</p>
-
-      {banners.length > 0 && <h2>Banners</h2>}
-      {banners.map(b => {
-        const owned = ownedCovers.includes(b.id)
-        return (
-          <div key={b.id} className="card flat row">
-            <div style={{ width: 78, height: 48, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
-              <img src={b.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-            <div className="grow"><b>{b.name || 'Banner'}</b></div>
-            {owned
-              ? <span className="chip ok">Comprado ✔</span>
-              : <button className="mini" disabled={coins < b.price} onClick={() => onBuy('cover', b.id, b.price)}>🪙 {b.price}</button>}
-          </div>
-        )
-      })}
     </>
   )
 }
@@ -1366,7 +1362,7 @@ function Admin({ quests, profile, banners = [], onBack, onNotify, onChanged }) {
         </div>
       )}
 
-      <h2>Banners de la tienda</h2>
+      <h2>Portadas de la tienda</h2>
       {banners.map(b => (
         <div key={b.id} className="card flat row">
           <div style={{ width: 78, height: 48, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
