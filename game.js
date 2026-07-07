@@ -224,3 +224,39 @@ export function earnedItems(state) {
   if (completed.length >= 3) ids.add('trofeo')
   return ids
 }
+
+// ---- Intereses para el onboarding + misiones sugeridas ----
+export const INTERESTS = [
+  { id: 'deporte', name: 'Deporte', emoji: '🏃', ideas: [
+    { title: 'Salir a trotar', freqPerWeek: 3, weeks: 2 },
+    { title: 'Ir al gym', freqPerWeek: 3, weeks: 4 },
+  ] },
+  { id: 'salud', name: 'Salud', emoji: '🥗', ideas: [
+    { title: 'Tomar 2L de agua al día', freqPerWeek: 7, weeks: 2 },
+    { title: 'Dormir antes de medianoche', freqPerWeek: 5, weeks: 3 },
+  ] },
+  { id: 'estudio', name: 'Estudio', emoji: '📚', ideas: [
+    { title: 'Estudiar 30 min', freqPerWeek: 5, weeks: 4 },
+    { title: 'Practicar un idioma', freqPerWeek: 4, weeks: 4 },
+  ] },
+  { id: 'lectura', name: 'Lectura', emoji: '📖', ideas: [
+    { title: 'Leer 20 min', freqPerWeek: 5, weeks: 3 },
+  ] },
+  { id: 'creatividad', name: 'Creatividad', emoji: '🎨', ideas: [
+    { title: 'Dibujar algo', freqPerWeek: 3, weeks: 3 },
+    { title: 'Escribir en un diario', freqPerWeek: 4, weeks: 2 },
+  ] },
+  { id: 'finanzas', name: 'Finanzas', emoji: '💰', ideas: [
+    { title: 'Registrar mis gastos', freqPerWeek: 7, weeks: 2 },
+  ] },
+  { id: 'bienestar', name: 'Bienestar', emoji: '🧘', ideas: [
+    { title: 'Meditar 10 min', freqPerWeek: 5, weeks: 3 },
+    { title: 'Salir a caminar', freqPerWeek: 4, weeks: 2 },
+  ] },
+  { id: 'hogar', name: 'Hogar', emoji: '🏠', ideas: [
+    { title: 'Ordenar 15 min', freqPerWeek: 5, weeks: 2 },
+  ] },
+  { id: 'social', name: 'Social', emoji: '💬', ideas: [
+    { title: 'Llamar a alguien querido', freqPerWeek: 2, weeks: 3 },
+  ] },
+]

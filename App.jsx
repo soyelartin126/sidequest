@@ -5,7 +5,7 @@ import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
   makeRedeemCode, ITEMS, earnedItems, itemById, eligibleLoot, tierForDays, TIERS, DURATIONS, goalDays,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
-  applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById,
+  applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById, INTERESTS,
 } from './game.js'
 
 // animo del personaje/mascota segun estado del jugador
@@ -48,6 +48,111 @@ function TierBadge({ weeks }) {
   return <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
 }
 
+// input de contraseña con ojo para mostrar/ocultar
+function Pwd({ value, onChange, placeholder }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="pwd">
+      <input type={show ? 'text' : 'password'} value={value} onChange={onChange} placeholder={placeholder} />
+      <button type="button" className="pwd-eye" aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+        onClick={() => setShow(s => !s)}>
+        {show
+          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 002.8 2.8" /><path d="M9.9 4.3A9.6 9.6 0 0112 4c5.5 0 9 5.5 9 8a12 12 0 01-2.1 3.1M6.2 6.2C3.7 7.8 2 10 2 12c0 2.5 3.5 8 9 8 1 0 2-.2 2.9-.5" /></svg>
+          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>}
+      </button>
+    </div>
+  )
+}
+
+// ---------- Onboarding: bienvenida + intereses + misiones sugeridas ----------
+function Onboarding({ profile, onFinish }) {
+  const [step, setStep] = useState(0)
+  const [sel, setSel] = useState([])
+  const [picked, setPicked] = useState([])
+  const [busy, setBusy] = useState(false)
+  const toggleSel = id => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
+  const isPicked = d => picked.some(p => p.title === d.title)
+  const pick = d => setPicked(p => isPicked(d) ? p.filter(x => x.title !== d.title) : [...p, d])
+  const ideas = INTERESTS.filter(i => sel.includes(i.id)).flatMap(i => i.ideas.map(d => ({ ...d, cat: i.name })))
+  const how = [
+    ['🎯', 'Crea misiones', 'objetivos con frecuencia y duración'],
+    ['✔️', 'Reporta cada día', 'un check-in diario mantiene tu racha'],
+    ['🔥', 'Racha y escudos', 'no la pierdas; los escudos te protegen'],
+    ['🗡', 'Gana XP y botín', 'sube de nivel y viste tu personaje'],
+    ['🎁', 'Premios reales', 'canjea retos de comercios locales'],
+  ]
+
+  if (step === 0) return (
+    <>
+      <div className="logo">SIDEQUEST</div>
+      <div className="card center">
+        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={92} />
+        <h1>¡Hola, {profile.name}!</h1>
+        <p className="muted">Así funciona SideQuest</p>
+        <div className="how">
+          {how.map(([e, t, d]) => (
+            <div key={t} className="how-row">
+              <span className="how-ico">{e}</span>
+              <div><b>{t}</b><div className="muted small">{d}</div></div>
+            </div>
+          ))}
+        </div>
+        <div className="spacer" />
+        <button onClick={() => setStep(1)}>Siguiente</button>
+      </div>
+    </>
+  )
+
+  if (step === 1) return (
+    <>
+      <div className="logo">SIDEQUEST</div>
+      <div className="card">
+        <h1>¿Qué quieres mejorar?</h1>
+        <p className="muted small">Elige tus intereses y te sugiero misiones para empezar.</p>
+        <div className="interests">
+          {INTERESTS.map(i => (
+            <button key={i.id} className={'interest' + (sel.includes(i.id) ? ' on' : '')}
+              onClick={() => toggleSel(i.id)}>{i.emoji} {i.name}</button>
+          ))}
+        </div>
+        <div className="spacer" />
+        <button disabled={sel.length === 0} onClick={() => setStep(2)}>Ver sugerencias</button>
+        <div className="spacer" />
+        <button className="sec" onClick={() => onFinish([], [])}>Saltar por ahora</button>
+      </div>
+    </>
+  )
+
+  return (
+    <>
+      <div className="logo">SIDEQUEST</div>
+      <div className="card">
+        <h1>Misiones sugeridas</h1>
+        <p className="muted small">Toca las que quieras empezar. Después puedes editarlas o crear más.</p>
+        {ideas.map((d, i) => (
+          <div key={i} className={'suggest' + (isPicked(d) ? ' on' : '')} onClick={() => pick(d)}>
+            <div className="grow">
+              <b>{d.title}</b>
+              <div className="muted small">{d.cat} · {d.freqPerWeek}x/sem · {d.weeks} sem</div>
+            </div>
+            <span className="suggest-check">{isPicked(d) ? '✔' : '+'}</span>
+          </div>
+        ))}
+        <div className="spacer" />
+        <button disabled={busy} onClick={async () => {
+          setBusy(true)
+          const chosen = picked.map(d => ({ title: d.title, freqPerWeek: d.freqPerWeek, weeks: d.weeks }))
+          await onFinish(sel, chosen)
+        }}>
+          {busy ? 'Creando…' : picked.length ? `Empezar con ${picked.length} ${picked.length > 1 ? 'misiones' : 'misión'}` : 'Empezar sin misiones'}
+        </button>
+        <div className="spacer" />
+        <button className="sec" onClick={() => setStep(1)}>← Volver</button>
+      </div>
+    </>
+  )
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined) // undefined = cargando
   const [data, setData] = useState(null)
@@ -55,6 +160,14 @@ export default function App() {
   const [view, setView] = useState(null)
   const [toast, setToast] = useState(null)
   const toastTimer = useRef()
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('sq-theme') || 'light' } catch { return 'light' }
+  })
+  const [onbDone, setOnbDone] = useState(false)
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try { localStorage.setItem('sq-theme', theme) } catch { /* noop */ }
+  }, [theme])
 
   const notify = msg => {
     setToast(msg)
@@ -106,7 +219,7 @@ export default function App() {
   const mood = moodOf(goals, stk, profile.bestStreak)
   const bg = bgById(profile.avatar?.bg)
   const isSolidBg = bg.css.startsWith('#')
-  const appStyle = {
+  const appStyle = theme === 'dark' ? { minHeight: '100dvh' } : {
     minHeight: '100dvh',
     backgroundColor: isSolidBg ? bg.css : undefined,
     backgroundImage: isSolidBg
@@ -115,6 +228,19 @@ export default function App() {
     backgroundSize: '26px 26px, 100% 100%',
     backgroundAttachment: 'fixed',
   }
+
+  const needsOnb = !onbDone && !profile.avatar?.onboarded && goals.length === 0
+  if (needsOnb) return (
+    <div className="app" style={appStyle}>
+      {toast && <div className="toast">{toast}</div>}
+      <Onboarding profile={profile} onFinish={async (interests, chosen) => {
+        setOnbDone(true)
+        for (const g of chosen) await db.insertGoal(profile.id, g)
+        await db.saveProfile({ ...profile, avatar: { ...profile.avatar, onboarded: true, interests } })
+        refresh()
+      }} />
+    </div>
+  )
 
   const doCheckin = async (goal, note, photoFile) => {
     if (!canCheckinToday(goal)) return
@@ -159,6 +285,7 @@ export default function App() {
       onOpen={g => setView({ name: 'group', id: g.id })}
       onChanged={() => refresh()} />,
     profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals} mood={mood}
+      theme={theme} onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
       onAvatar={async av => { await db.saveProfile({ ...profile, avatar: av }); refresh() }}
       onEquip={async item => {
         const eq = { ...(profile.equipped || {}) }
@@ -261,7 +388,7 @@ function AuthScreen({ onNotify, toast }) {
           <label>Correo</label>
           <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="tu@correo.com" />
           <label>Contraseña</label>
-          <input type="password" value={form.password} onChange={e => set('password', e.target.value)} />
+          <Pwd value={form.password} onChange={e => set('password', e.target.value)} />
           <button disabled={busy || !form.email || !form.password} onClick={submitLogin}>
             {busy ? 'Entrando…' : 'Entrar'}
           </button>
@@ -280,7 +407,7 @@ function AuthScreen({ onNotify, toast }) {
           <label>Teléfono (opcional)</label>
           <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+56 9 …" />
           <label>Contraseña (mínimo 6 caracteres)</label>
-          <input type="password" value={form.password} onChange={e => set('password', e.target.value)} />
+          <Pwd value={form.password} onChange={e => set('password', e.target.value)} />
           <button disabled={!form.name.trim() || !form.email.includes('@') || form.password.length < 6}
             onClick={() => setMode('signup2')}>
             Siguiente: tu personaje →
@@ -459,6 +586,17 @@ function NewGoal({ owned, onBack, onCreate }) {
           Meta total: {Math.max(1, Math.round(freq * weeks))} check-ins · máximo 1 por día · dificultad:{' '}
           <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
         </p>
+        <div className="tier-legend">
+          <p className="muted small" style={{ margin: '0 0 8px' }}>
+            La dificultad depende de cuántos días dura tu misión: mientras más larga, más difícil y mejor es el botín que puedes ganar.
+          </p>
+          {Object.entries(TIERS).map(([id, t]) => (
+            <div key={id} className="tier-row">
+              <span className="chip" style={{ background: t.color, color: '#fff', minWidth: 78, textAlign: 'center' }}>{t.name}</span>
+              <span className="muted small">{t.maxDays === Infinity ? `${t.minDays}+ días` : `${t.minDays}–${t.maxDays} días`}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="card">
@@ -802,7 +940,7 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
 }
 
 // ---------- Perfil ----------
-function Profile({ profile, lvl, earned, goals, mood = 'happy', onAvatar, onEquip, onAdmin, onUnlockAdmin, onLogout }) {
+function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onUnlockAdmin, onLogout }) {
   const [editing, setEditing] = useState(false)
   const [code, setCode] = useState('')
   const completed = goals.filter(g => g.status === 'completed').length
@@ -941,6 +1079,20 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', onAvatar, onEqui
             </div>
           )
         })}
+      </div>
+
+      <h2>Preferencias</h2>
+      <div className="card">
+        <div className="row">
+          <div className="grow">
+            <b>Modo oscuro</b>
+            <div className="muted small">Cambia el tema de la app</div>
+          </div>
+          <button className={'toggle' + (theme === 'dark' ? ' on' : '')} role="switch"
+            aria-checked={theme === 'dark'} aria-label="Modo oscuro" onClick={onToggleTheme}>
+            <span className="knob" />
+          </button>
+        </div>
       </div>
 
       <h2>Cuenta</h2>
