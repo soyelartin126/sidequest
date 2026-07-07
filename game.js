@@ -4,6 +4,16 @@ export const XP_CHECKIN = 10
 export const XP_GOAL_COMPLETE = 60
 export const XP_QUEST_COMPLETE = 100
 
+// ---- Monedas (economía interna) ----
+export const COIN_CHECKIN = 8
+export const COIN_GOAL = 30
+export const COIN_QUEST = 60
+export const WELCOME_COINS = 50
+// precio de los objetos según su tier, y de las portadas
+export const TIER_PRICE = { facil: 15, medio: 70, dificil: 180, legendario: 450 }
+export const itemPrice = it => TIER_PRICE[it.tier] || 40
+export const COVER_PRICE = 120
+
 export const LEVELS = [
   { xp: 0, title: 'Novato' },
   { xp: 100, title: 'Aprendiz' },

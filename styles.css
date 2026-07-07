@@ -210,6 +210,10 @@ label { font-size: 13px; font-weight: 700; }
 }
 .link-btn:active { transform: none; }
 
+/* barra de monedas + tienda */
+.coinbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.coinbar .mini { width: auto; }
+
 /* métricas del panel admin */
 .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px; }
 .kpi { background: var(--card); border: var(--border); border-radius: 14px; padding: 12px 10px; text-align: center; }

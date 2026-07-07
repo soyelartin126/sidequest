@@ -6,6 +6,7 @@ import {
   makeRedeemCode, ITEMS, earnedItems, itemById, eligibleLoot, tierForDays, TIERS, DURATIONS, goalDays, isPermanent,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
   applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById, INTERESTS,
+  COIN_CHECKIN, COIN_GOAL, COIN_QUEST, WELCOME_COINS, itemPrice, COVER_PRICE,
 } from './game.js'
 
 // animo del personaje/mascota segun estado del jugador
@@ -266,7 +267,7 @@ export default function App() {
       <Onboarding profile={profile} onFinish={async (interests, chosen) => {
         setOnbDone(true)
         for (const g of chosen) await db.insertGoal(profile.id, g)
-        await db.saveProfile({ ...profile, avatar: { ...profile.avatar, onboarded: true, interests } })
+        await db.saveProfile({ ...profile, avatar: { ...profile.avatar, onboarded: true, interests, coins: (profile.avatar?.coins || 0) + WELCOME_COINS } })
         refresh()
       }} />
     </div>
@@ -277,17 +278,19 @@ export default function App() {
     const photo = photoFile ? await resizePhoto(photoFile) : null
     await db.insertCheckin(profile.id, goal.id, { day: dayKey(), note, photo })
     const p = { ...profile, xp: profile.xp + XP_CHECKIN }
+    p.avatar = { ...(profile.avatar || {}), coins: (profile.avatar?.coins || 0) + COIN_CHECKIN }
     const willComplete = goal.checkins.length + 1 >= goalTarget(goal)
     if (willComplete) {
       p.xp += goal.sponsor ? XP_QUEST_COMPLETE : XP_GOAL_COMPLETE
       if (goal.rewardItem && !p.items.includes(goal.rewardItem)) p.items = [...p.items, goal.rewardItem]
-      const beforeSh = p.avatar?.shields ?? 1
-      p.avatar = addShield(p.avatar || {})
+      const beforeSh = p.avatar.shields ?? 1
+      p.avatar = addShield(p.avatar)
+      p.avatar.coins = (p.avatar.coins || 0) + (goal.sponsor ? COIN_QUEST : COIN_GOAL)
       await db.completeGoal({ ...goal, redeemCode: goal.sponsor ? makeRedeemCode() : null })
       notify(goal.sponsor ? `¡Reto completado! Tienes un canje en ${goal.sponsor}` : '¡Misión completada!')
       if (p.avatar.shields > beforeSh) setTimeout(() => notify('🛡 +1 escudo de racha'), 1400)
     } else {
-      notify(`Check-in listo · +${XP_CHECKIN} XP`)
+      notify(`Check-in listo · +${XP_CHECKIN} XP · +${COIN_CHECKIN} 🪙`)
     }
     const stNow = streak(goals) + 1
     p.bestStreak = Math.max(p.bestStreak || 0, stNow)
@@ -300,6 +303,7 @@ export default function App() {
       pendingRedeem={pendingRedeem}
       onGoal={g => setView({ name: 'goal', id: g.id })}
       onRedeem={g => setView({ name: 'redeem', id: g.id })}
+      onStore={() => setView({ name: 'store' })}
       onNew={() => setView({ name: 'newGoal' })} />,
     goals: <Goals goals={goals}
       onGoal={g => setView({ name: 'goal', id: g.id })}
@@ -350,6 +354,18 @@ export default function App() {
   } else if (view?.name === 'admin') {
     overlay = <Admin quests={quests.filter(q => !q.groupId)} profile={profile}
       onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
+  } else if (view?.name === 'store') {
+    overlay = <Store profile={profile} lvl={lvl} earned={earned} onBack={() => setView(null)}
+      onBuy={async (kind, id, price) => {
+        const coins = profile.avatar?.coins || 0
+        if (coins < price) { notify('No te alcanzan las monedas'); return }
+        const av = { ...(profile.avatar || {}), coins: coins - price }
+        const p = { ...profile, avatar: av }
+        if (kind === 'item') { if (!p.items.includes(id)) p.items = [...p.items, id] }
+        else if (kind === 'cover') { av.ownedCovers = [...(av.ownedCovers || []), id] }
+        await db.saveProfile(p)
+        notify('¡Comprado! 🎉'); refresh()
+      }} />
   }
 
   return (
@@ -483,10 +499,11 @@ function AuthScreen({ onNotify, toast }) {
 }
 
 // ---------- Inicio ----------
-function Home({ profile, lvl, stk, goals, mood = 'happy', pendingRedeem, onGoal, onRedeem, onNew }) {
+function Home({ profile, lvl, stk, goals, mood = 'happy', pendingRedeem, onGoal, onRedeem, onNew, onStore }) {
   const active = goals.filter(g => g.status === 'active')
   const dots = weekDots(goals)
   const shields = profile.avatar?.shields ?? 1
+  const coins = profile.avatar?.coins || 0
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
   return (
     <>
@@ -503,6 +520,11 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', pendingRedeem, onGoal,
             {lvl.next ? `${profile.xp} / ${lvl.next.xp} XP` : `${profile.xp} XP · nivel máximo`}
           </div>
         </div>
+      </div>
+
+      <div className="coinbar">
+        <span className="chip" style={{ background: '#FFF0D6', color: '#8A5A00', fontSize: 14 }}>🪙 {coins} monedas</span>
+        <button className="mini acc" onClick={onStore}>🛍 Tienda</button>
       </div>
 
       <div className="card">
@@ -1077,7 +1099,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light',
         <p className="muted small">La imagen de portada de tu inicio. Se desbloquean subiendo de nivel.</p>
         <div className="bgs">
           {COVERS.map(c => {
-            const locked = lvl.level < c.minLevel
+            const locked = lvl.level < c.minLevel && !(profile.avatar?.ownedCovers || []).includes(c.id)
             return (
               <div key={c.id} className={'cover-opt' + (curCover === c.id ? ' sel' : '') + (locked ? ' locked' : '')}
                 onClick={() => !locked && onAvatar({ ...profile.avatar, cover: c.id })}>
@@ -1177,6 +1199,60 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', theme = 'light',
         <button className="sec" onClick={onLogout}>Cerrar sesión</button>
       </div>
       <p className="muted small center">SideQuest v0.3 · sincronizado en la nube ☁️</p>
+    </>
+  )
+}
+
+// ---------- Tienda (comprar con monedas) ----------
+function Store({ profile, lvl, earned, onBack, onBuy }) {
+  const coins = profile.avatar?.coins || 0
+  const ownedCovers = profile.avatar?.ownedCovers || []
+  const loot = ITEMS.filter(it => it.kind === 'loot')
+  return (
+    <>
+      <div className="topbar">
+        <button className="sec mini" onClick={onBack}>← Volver</button>
+        <h1>Tienda</h1>
+      </div>
+      <div className="card center">
+        <div style={{ fontSize: 28, fontWeight: 800, color: '#8A5A00' }}>🪙 {coins}</div>
+        <div className="muted small">Ganas monedas con cada check-in y misión completada</div>
+      </div>
+
+      <h2>Objetos</h2>
+      <div className="items">
+        {loot.map(it => {
+          const owned = earned.has(it.id)
+          const price = itemPrice(it)
+          return (
+            <div key={it.id} className="item">
+              <ItemSprite id={it.id} />
+              <div className="nm">{it.name}</div>
+              {owned
+                ? <div className="muted small">✔ Tienes</div>
+                : <button className="mini" style={{ marginTop: 6 }} disabled={coins < price}
+                    onClick={() => onBuy('item', it.id, price)}>🪙 {price}</button>}
+            </div>
+          )
+        })}
+      </div>
+
+      <h2>Portadas</h2>
+      <div className="bgs">
+        {COVERS.map(c => {
+          const avail = lvl.level >= c.minLevel || ownedCovers.includes(c.id)
+          return (
+            <div key={c.id} className="cover-opt">
+              <div className="cover-thumb"><CoverThumb id={c.id} /></div>
+              {avail
+                ? <div className="bg-nm">{lvl.level >= c.minLevel ? `Nv ${c.minLevel}` : 'Comprada ✔'}</div>
+                : <button className="mini" style={{ marginTop: 4, padding: '5px 8px', fontSize: 11, width: '100%' }}
+                    disabled={coins < COVER_PRICE} onClick={() => onBuy('cover', c.id, COVER_PRICE)}>🪙 {COVER_PRICE}</button>}
+            </div>
+          )
+        })}
+      </div>
+      <p className="muted small">Las portadas también se desbloquean gratis al subir de nivel; aquí puedes comprarlas antes.</p>
     </>
   )
 }
