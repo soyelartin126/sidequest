@@ -3,7 +3,7 @@ import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVE
 import * as db from './supabase.js'
 import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
-  makeRedeemCode, ITEMS, earnedItems, itemById, eligibleLoot, tierForDays, TIERS, DURATIONS, goalDays,
+  makeRedeemCode, ITEMS, earnedItems, itemById, eligibleLoot, tierForDays, TIERS, DURATIONS, goalDays, isPermanent,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
   applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById, INTERESTS,
 } from './game.js'
@@ -552,6 +552,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', pendingRedeem, onGoal,
 function GoalCard({ g, onClick }) {
   const t = goalTarget(g)
   const done = g.checkins.length
+  const perm = isPermanent(g)
   const reward = g.rewardItem && itemById(g.rewardItem)
   return (
     <div className="card" onClick={onClick} style={{ cursor: 'pointer' }}>
@@ -561,12 +562,13 @@ function GoalCard({ g, onClick }) {
           <h3>{g.title}</h3>
           {g.sponsor
             ? <div className="muted small">Patrocina: {g.sponsor}</div>
-            : <div className="muted small">{g.questId ? 'Reto grupal · ' : 'Objetivo personal · '}<TierBadge weeks={g.weeks} /></div>}
+            : <div className="muted small">{g.questId ? 'Reto grupal · ' : 'Objetivo personal · '}
+                {perm ? <span className="chip" style={{ background: '#3582DB', color: '#fff' }}>♾ Permanente</span> : <TierBadge weeks={g.weeks} />}</div>}
         </div>
-        <b>{done}/{t}</b>
+        <b>{perm ? `${done} ♾` : `${done}/${t}`}</b>
       </div>
       <div className="spacer" />
-      <Bar frac={done / t} />
+      {!perm && <Bar frac={done / t} />}
       {g.prize && <div><span className="chip">🎁 {g.prize}</span></div>}
       {reward && <div><span className="chip"><ItemSprite id={reward.id} size={14} /> Botín: {reward.name}</span></div>}
       {canCheckinToday(g)
@@ -606,6 +608,7 @@ function NewGoal({ owned, onBack, onCreate }) {
   const [freq, setFreq] = useState(3)
   const [durIdx, setDurIdx] = useState(5)
   const weeks = DURATIONS[durIdx].weeks
+  const permanent = weeks === 0
   const [reward, setReward] = useState(null)
   const [busy, setBusy] = useState(false)
   const tier = tierForDays(Math.round(weeks * 7))
@@ -621,53 +624,71 @@ function NewGoal({ owned, onBack, onCreate }) {
         <label>¿Qué quieres lograr?</label>
         <input value={title} onChange={e => setTitle(e.target.value)}
           placeholder="Ej: Ir al gym, leer 20 min, salir a trotar" maxLength={60} />
-        <label>Veces por semana: {freq}</label>
+        <label>Frecuencia: {freq === 7 ? 'Todos los días' : `${freq} veces por semana`}</label>
         <input type="range" min="1" max="7" value={freq} onChange={e => setFreq(+e.target.value)} />
         <label>Duración: {DURATIONS[durIdx].label}</label>
         <input type="range" min="0" max={DURATIONS.length - 1} value={durIdx} onChange={e => setDurIdx(+e.target.value)} />
-        <p className="muted small">
-          Meta total: {Math.max(1, Math.round(freq * weeks))} check-ins · máximo 1 por día · dificultad:{' '}
-          <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
-        </p>
-        <div className="tier-legend">
-          <p className="muted small" style={{ margin: '0 0 8px' }}>
-            La dificultad depende de cuántos días dura tu misión: mientras más larga, más difícil y mejor es el botín que puedes ganar.
+        {permanent ? (
+          <p className="muted small">
+            ♾ Reto permanente · sin fecha de término · máximo 1 check-in por día. Suma XP y mantiene tu racha; no tiene premio de fin porque no termina.
           </p>
-          {Object.entries(TIERS).map(([id, t]) => (
-            <div key={id} className="tier-row">
-              <span className="chip" style={{ background: t.color, color: '#fff', minWidth: 78, textAlign: 'center' }}>{t.name}</span>
-              <span className="muted small">{t.maxDays === Infinity ? `${t.minDays}+ días` : `${t.minDays}–${t.maxDays} días`}</span>
+        ) : (
+          <>
+            <p className="muted small">
+              Meta total: {Math.max(1, Math.round(freq * weeks))} check-ins · máximo 1 por día · dificultad:{' '}
+              <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
+            </p>
+            <div className="tier-legend">
+              <p className="muted small" style={{ margin: '0 0 8px' }}>
+                La dificultad depende de cuántos días dura tu misión: mientras más larga, más difícil y mejor es el botín que puedes ganar.
+              </p>
+              {Object.entries(TIERS).map(([id, t]) => (
+                <div key={id} className="tier-row">
+                  <span className="chip" style={{ background: t.color, color: '#fff', minWidth: 78, textAlign: 'center' }}>{t.name}</span>
+                  <span className="muted small">{t.maxDays === Infinity ? `${t.minDays}+ días` : `${t.minDays}–${t.maxDays} días`}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
-      <div className="card">
-        <h3>Elige tu botín 🗡</h3>
-        <p className="muted small">
-          Completa la misión y ganas el objeto. Misiones más largas e intensas desbloquean mejor botín.
-        </p>
-        {loot.length === 0 && <p className="muted">Ya tienes todo el botín de este nivel. ¡Sube la duración o frecuencia!</p>}
-        <div className="items">
-          {loot.map(it => (
-            <div key={it.id} className={'item' + (reward === it.id ? ' equipped' : '')}
-              onClick={() => setReward(r => r === it.id ? null : it.id)}>
-              <ItemSprite id={it.id} />
-              <div className="nm">{it.name}</div>
-              <div className="muted small" style={{ color: TIERS[it.tier].color, fontWeight: 700 }}>
-                {TIERS[it.tier].name} · {it.reqCheckins}✔
-              </div>
-            </div>
-          ))}
+      {permanent ? (
+        <div className="card">
+          <p className="muted small">Los retos permanentes no tienen botín de fin: te motivan con XP diario y tu racha.</p>
+          <button disabled={!title.trim() || busy} onClick={async () => {
+            setBusy(true)
+            await onCreate({ title: title.trim(), freqPerWeek: freq, weeks, rewardItem: null })
+          }}>{busy ? 'Creando…' : 'Crear reto permanente'}</button>
         </div>
-        <div className="spacer" />
-        <button disabled={!title.trim() || busy} onClick={async () => {
-          setBusy(true)
-          await onCreate({ title: title.trim(), freqPerWeek: freq, weeks, rewardItem: reward })
-        }}>
-          {busy ? 'Creando…' : reward ? `Crear misión (botín: ${itemById(reward).name})` : 'Crear misión sin botín'}
-        </button>
-      </div>
+      ) : (
+        <div className="card">
+          <h3>Elige tu botín 🗡</h3>
+          <p className="muted small">
+            Completa la misión y ganas el objeto. Misiones más largas e intensas desbloquean mejor botín.
+          </p>
+          {loot.length === 0 && <p className="muted">Ya tienes todo el botín de este nivel. ¡Sube la duración o frecuencia!</p>}
+          <div className="items">
+            {loot.map(it => (
+              <div key={it.id} className={'item' + (reward === it.id ? ' equipped' : '')}
+                onClick={() => setReward(r => r === it.id ? null : it.id)}>
+                <ItemSprite id={it.id} />
+                <div className="nm">{it.name}</div>
+                <div className="muted small" style={{ color: TIERS[it.tier].color, fontWeight: 700 }}>
+                  {TIERS[it.tier].name} · {it.reqCheckins}✔
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="spacer" />
+          <button disabled={!title.trim() || busy} onClick={async () => {
+            setBusy(true)
+            await onCreate({ title: title.trim(), freqPerWeek: freq, weeks, rewardItem: reward })
+          }}>
+            {busy ? 'Creando…' : reward ? `Crear misión (botín: ${itemById(reward).name})` : 'Crear misión sin botín'}
+          </button>
+        </div>
+      )}
     </>
   )
 }
@@ -677,6 +698,7 @@ function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
   const [file, setFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const t = goalTarget(g)
+  const perm = isPermanent(g)
   const can = canCheckinToday(g)
   return (
     <>
@@ -687,9 +709,16 @@ function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
       <div className="card">
         {g.sponsor && <span className="chip prim">Reto de {g.sponsor}</span>}
         {g.prize && <span className="chip">🎁 {g.prize}</span>}
+        {perm && <span className="chip" style={{ background: '#3582DB', color: '#fff' }}>♾ Permanente</span>}
         <div className="spacer" />
-        <Bar frac={g.checkins.length / t} />
-        <div className="muted small">{g.checkins.length} de {t} check-ins · {g.freqPerWeek}x por semana · {goalDays(g)} días</div>
+        {perm ? (
+          <div className="muted small">{g.checkins.length} check-ins · {g.freqPerWeek === 7 ? 'todos los días' : `${g.freqPerWeek}x por semana`} · sin fecha de término</div>
+        ) : (
+          <>
+            <Bar frac={g.checkins.length / t} />
+            <div className="muted small">{g.checkins.length} de {t} check-ins · {g.freqPerWeek}x por semana · {goalDays(g)} días</div>
+          </>
+        )}
       </div>
 
       {g.status === 'completed' ? (

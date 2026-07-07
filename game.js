@@ -126,8 +126,10 @@ export function weekDots(goals) {
   })
 }
 
-export const goalTarget = g => Math.max(1, Math.round(g.freqPerWeek * g.weeks))
-export const goalDays = g => Math.round(g.weeks * 7)
+// un reto permanente no tiene fin (weeks 0): suma XP y racha, nunca "se completa"
+export const isPermanent = g => !g.weeks || g.weeks <= 0
+export const goalTarget = g => (isPermanent(g) ? Infinity : Math.max(1, Math.round(g.freqPerWeek * g.weeks)))
+export const goalDays = g => Math.round((g.weeks || 0) * 7)
 
 export function canCheckinToday(g) {
   return g.status === 'active' && !g.checkins.some(c => c.day === dayKey())
@@ -199,6 +201,7 @@ export const DURATIONS = [
   { label: '4 semanas', weeks: 4 },
   { label: '6 semanas', weeks: 6 },
   { label: '8 semanas', weeks: 8 },
+  { label: 'Reto permanente', weeks: 0 },
 ]
 
 // items elegibles como recompensa para una mision (freq x semanas)
