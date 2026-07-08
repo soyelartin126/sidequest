@@ -16,11 +16,11 @@ export const COVER_PRICE = 120
 
 export const LEVELS = [
   { xp: 0, title: 'Novato' },
-  { xp: 100, title: 'Aprendiz' },
-  { xp: 250, title: 'Constante' },
-  { xp: 500, title: 'Dedicado' },
-  { xp: 900, title: 'Imparable' },
-  { xp: 1500, title: 'Leyenda' },
+  { xp: 40, title: 'Aprendiz' },
+  { xp: 120, title: 'Constante' },
+  { xp: 260, title: 'Dedicado' },
+  { xp: 480, title: 'Imparable' },
+  { xp: 800, title: 'Leyenda' },
 ]
 
 export function levelFor(xp) {

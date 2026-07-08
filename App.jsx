@@ -190,6 +190,7 @@ export default function App() {
   })
   const [onbDone, setOnbDone] = useState(false)
   const [recovery, setRecovery] = useState(false)
+  const [levelUp, setLevelUp] = useState(null)
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     try { localStorage.setItem('sq-theme', theme) } catch { /* noop */ }
@@ -295,6 +296,7 @@ export default function App() {
     const stNow = streak(goals) + 1
     p.bestStreak = Math.max(p.bestStreak || 0, stNow)
     await db.saveProfile(p)
+    if (levelFor(p.xp).level > levelFor(profile.xp).level) setTimeout(() => setLevelUp(levelFor(p.xp)), 900)
     await refresh(true)
   }
 
@@ -371,6 +373,17 @@ export default function App() {
   return (
     <div className="app" style={appStyle}>
       {toast && <div className="toast">{toast}</div>}
+      {levelUp && (
+        <div className="modal-bg" onClick={() => setLevelUp(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 46 }}>🎉</div>
+            <h1>¡Subiste de nivel!</h1>
+            <div><span className="chip prim" style={{ fontSize: 15 }}>Nivel {levelUp.level} · {levelUp.title}</span></div>
+            <p className="muted small">¡Sigue así! Cada check-in te acerca al siguiente nivel.</p>
+            <button onClick={() => setLevelUp(null)}>¡Genial!</button>
+          </div>
+        </div>
+      )}
       {overlay || screens[tab]}
       {!overlay && (
         <nav className="nav">
@@ -420,7 +433,7 @@ function AuthScreen({ onNotify, toast }) {
     <div className="app">
       {toast && <div className="toast">{toast}</div>}
       <div className="logo">LevelApp</div>
-      <div className="tagline">gamifica tu vida · cumple objetivos · gana premios reales</div>
+      <div className="tagline">Gamifica tu vida · cumple objetivos · gana premios reales</div>
 
       {mode === 'login' && (
         <div className="card">
@@ -508,7 +521,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingR
   const coverBanner = banners.find(b => b.id === profile.avatar?.cover)
   return (
     <>
-      <Cover id={coverById(profile.avatar?.cover).id} image={coverBanner?.image} greeting={`Hola, ${profile.name}`} sub="gamifica tu vida" />
+      <Cover id={coverById(profile.avatar?.cover).id} image={coverBanner?.image} greeting={`Hola, ${profile.name}`} sub="Gamifica tu vida" />
 
       <div className="card row lift">
         <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} mood={mood} />
