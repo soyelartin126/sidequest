@@ -39,13 +39,12 @@ export const resetPassword = email =>
 export const updatePassword = password => sb.auth.updateUser({ password })
 
 export async function signUp({ email, password, name, phone, avatar }) {
-  const { data, error } = await sb.auth.signUp({ email, password })
-  if (error) return { error }
-  const user = data.user
-  const { error: e2 } = await sb.from('profiles').insert({
-    id: user.id, name, phone, avatar, equipped: {}, items: [],
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { name, phone, avatar } },
   })
-  return { user, error: e2 }
+  if (error) return { error }
+  return { user: data.user, error: null }
 }
 
 // ---------- carga de estado ----------
