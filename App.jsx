@@ -9,6 +9,7 @@ import {
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
   applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById, INTERESTS, ICONS,
   COIN_CHECKIN, COIN_GOAL, COIN_QUEST, WELCOME_COINS, itemPrice, COVER_PRICE,
+  SKILLS, MAX_SKILLS_PER_GOAL, SKILL_XP_PER_CHECKIN, skillLevel,
 } from './game.js'
 
 // animo del personaje/mascota segun estado del jugador
@@ -268,6 +269,11 @@ export default function App() {
     await db.insertCheckin(profile.id, goal.id, { day: dayKey(), note, photo })
     const p = { ...profile, xp: profile.xp + XP_CHECKIN }
     p.avatar = { ...(profile.avatar || {}), coins: (profile.avatar?.coins || 0) + COIN_CHECKIN }
+    if (goal.skills?.length > 0) {
+      const skillsXp = { ...(p.avatar.skills || {}) }
+      goal.skills.forEach(sid => { skillsXp[sid] = (skillsXp[sid] || 0) + SKILL_XP_PER_CHECKIN })
+      p.avatar.skills = skillsXp
+    }
     const willComplete = goal.checkins.length + 1 >= goalTarget(goal)
     if (willComplete) {
       p.xp += goal.sponsor ? XP_QUEST_COMPLETE : XP_GOAL_COMPLETE
@@ -603,6 +609,14 @@ function GoalCard({ g, onClick }) {
       </div>
       <div className="spacer" />
       {!perm && <Bar frac={done / t} />}
+      {g.skills?.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+          {g.skills.map(sid => {
+            const s = SKILLS.find(x => x.id === sid)
+            return s && <span key={sid} className="chip">{s.emoji} {s.name}</span>
+          })}
+        </div>
+      )}
       {g.prize && <div><span className="chip">🎁 {g.prize}</span></div>}
       {reward && <div><span className="chip"><ItemSprite id={reward.id} size={14} /> Botín: {reward.name}</span></div>}
       {canCheckinToday(g)
@@ -640,6 +654,9 @@ function Goals({ goals, onGoal, onNew }) {
 function NewGoal({ owned, onBack, onCreate }) {
   const [title, setTitle] = useState('')
   const [icon, setIcon] = useState(ICONS[0])
+  const [skills, setSkills] = useState([])
+  const toggleSkill = id => setSkills(s => s.includes(id) ? s.filter(x => x !== id)
+    : s.length < MAX_SKILLS_PER_GOAL ? [...s, id] : s)
   const [freq, setFreq] = useState(3)
   const [durIdx, setDurIdx] = useState(5)
   const weeks = DURATIONS[durIdx].weeks
@@ -664,6 +681,13 @@ function NewGoal({ owned, onBack, onCreate }) {
           {ICONS.map(ic => (
             <button key={ic} type="button" className={'icon-opt' + (icon === ic ? ' sel' : '')}
               onClick={() => setIcon(ic)}>{ic}</button>
+          ))}
+        </div>
+        <label>Skills que mejora (hasta {MAX_SKILLS_PER_GOAL})</label>
+        <div className="interests">
+          {SKILLS.map(s => (
+            <button key={s.id} type="button" className={'interest' + (skills.includes(s.id) ? ' on' : '')}
+              onClick={() => toggleSkill(s.id)}>{s.emoji} {s.name}</button>
           ))}
         </div>
         <label>Frecuencia: {freq === 7 ? 'Todos los días' : `${freq} veces por semana`}</label>
@@ -700,7 +724,7 @@ function NewGoal({ owned, onBack, onCreate }) {
           <p className="muted small">Los retos permanentes no tienen botín de fin: te motivan con XP diario y tu racha.</p>
           <button disabled={!title.trim() || busy} onClick={async () => {
             setBusy(true)
-            await onCreate({ title: title.trim(), icon, freqPerWeek: freq, weeks, rewardItem: null })
+            await onCreate({ title: title.trim(), icon, skills, freqPerWeek: freq, weeks, rewardItem: null })
           }}>{busy ? 'Creando…' : 'Crear reto permanente'}</button>
         </div>
       ) : (
@@ -725,7 +749,7 @@ function NewGoal({ owned, onBack, onCreate }) {
           <div className="spacer" />
           <button disabled={!title.trim() || busy} onClick={async () => {
             setBusy(true)
-            await onCreate({ title: title.trim(), icon, freqPerWeek: freq, weeks, rewardItem: reward })
+            await onCreate({ title: title.trim(), icon, skills, freqPerWeek: freq, weeks, rewardItem: reward })
           }}>
             {busy ? 'Creando…' : reward ? `Crear misión (botín: ${itemById(reward).name})` : 'Crear misión sin botín'}
           </button>
@@ -1123,6 +1147,23 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
           </div>
         </div>
       )}
+
+      <h2>Skills</h2>
+      <div className="card">
+        <p className="muted small">Suben cuando haces check-in en misiones que las tengan asociadas.</p>
+        {SKILLS.map(s => {
+          const { level, progress } = skillLevel(profile.avatar?.skills?.[s.id] || 0)
+          return (
+            <div key={s.id} style={{ marginBottom: 10 }}>
+              <div className="row">
+                <div className="grow">{s.emoji} {s.name}</div>
+                <b>Nivel {level}</b>
+              </div>
+              <Bar frac={progress} />
+            </div>
+          )
+        })}
+      </div>
 
       <h2>Portada</h2>
       <div className="card">

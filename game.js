@@ -244,6 +244,26 @@ export const ICONS = [
   '🏠', '💬', '💪', '🔥', '😴', '💧', '✍️', '🎵',
 ]
 
+// ---- Skills: se suben haciendo check-in en misiones que las tengan asociadas ----
+export const SKILLS = [
+  { id: 'confianza', name: 'Confianza', emoji: '💪' },
+  { id: 'creatividad', name: 'Creatividad', emoji: '🎨' },
+  { id: 'social', name: 'Social', emoji: '💬' },
+  { id: 'estudios', name: 'Estudios', emoji: '📚' },
+  { id: 'disciplina', name: 'Disciplina', emoji: '🔥' },
+  { id: 'bienestar', name: 'Bienestar', emoji: '🧘' },
+  { id: 'trabajo', name: 'Trabajo', emoji: '💼' },
+]
+export const MAX_SKILLS_PER_GOAL = 3
+export const SKILL_XP_PER_CHECKIN = 10
+export const SKILL_XP_PER_LEVEL = 50
+
+export function skillLevel(xp = 0) {
+  const level = Math.floor(xp / SKILL_XP_PER_LEVEL) + 1
+  const progress = (xp % SKILL_XP_PER_LEVEL) / SKILL_XP_PER_LEVEL
+  return { level, progress }
+}
+
 // ---- Intereses para el onboarding + misiones sugeridas ----
 export const INTERESTS = [
   { id: 'deporte', name: 'Deporte', emoji: '🏃', ideas: [

@@ -18,7 +18,7 @@ const rowToGoal = r => ({
   image: r.image_url, freqPerWeek: r.freq_per_week, weeks: +r.weeks,
   rewardItem: r.reward_item, status: r.status, questId: r.quest_id,
   redeemCode: r.redeem_code, redeemed: r.redeemed, userId: r.user_id,
-  icon: r.meta?.icon || null,
+  icon: r.meta?.icon || null, skills: r.meta?.skills || [],
   checkins: (r.checkins || [])
     .sort((a, b) => a.day.localeCompare(b.day))
     .map(c => ({ day: c.day, note: c.note || '', photo: c.photo_url || null })),
@@ -28,7 +28,7 @@ const rowToQuest = r => ({
   id: r.id, title: r.title, sponsor: r.sponsor, prize: r.prize,
   image: r.image_url, freqPerWeek: r.freq_per_week, weeks: +r.weeks,
   active: r.active, groupId: r.group_id, createdBy: r.created_by,
-  icon: r.meta?.icon || null,
+  icon: r.meta?.icon || null, skills: r.meta?.skills || [],
 })
 
 // ---------- auth ----------
@@ -98,7 +98,7 @@ export const insertGoal = (userId, g) => sb.from('goals').insert({
   user_id: userId, title: g.title, sponsor: g.sponsor || null, prize: g.prize || null,
   image_url: g.image || null, freq_per_week: g.freqPerWeek, weeks: g.weeks,
   reward_item: g.rewardItem || null, quest_id: g.questId || null,
-  meta: { icon: g.icon || null },
+  meta: { icon: g.icon || null, skills: g.skills || [] },
 }).select().single()
 
 export const deleteGoal = id => sb.from('goals').delete().eq('id', id)
@@ -118,7 +118,7 @@ export const insertQuest = (userId, q) => sb.from('quests').insert({
   title: q.title, sponsor: q.sponsor || null, prize: q.prize || null,
   image_url: q.image || null, freq_per_week: q.freqPerWeek, weeks: q.weeks,
   active: true, group_id: q.groupId || null, created_by: userId,
-  meta: { icon: q.icon || null },
+  meta: { icon: q.icon || null, skills: q.skills || [] },
 })
 
 export const setQuestActive = (id, active) => sb.from('quests').update({ active }).eq('id', id)

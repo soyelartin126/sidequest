@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import * as db from './supabase.js'
 import { resizePhoto } from './utils.js'
-import { ICONS } from './game.js'
+import { ICONS, SKILLS, MAX_SKILLS_PER_GOAL } from './game.js'
 
 export default function Admin({ quests, profile, banners = [], onBack, onNotify, onChanged }) {
-  const empty = { title: '', sponsor: '', prize: '', icon: ICONS[0], freqPerWeek: 3, weeks: 4, image: null }
+  const empty = { title: '', sponsor: '', prize: '', icon: ICONS[0], skills: [], freqPerWeek: 3, weeks: 4, image: null }
   const [form, setForm] = useState(null)
   const [adminData, setAdminData] = useState(null)
   const [busy, setBusy] = useState(false)
   const [bform, setBform] = useState({ name: '', price: 120, image: null })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const toggleSkill = id => setForm(f => ({
+    ...f,
+    skills: f.skills.includes(id) ? f.skills.filter(x => x !== id)
+      : f.skills.length < MAX_SKILLS_PER_GOAL ? [...f.skills, id] : f.skills,
+  }))
 
   useEffect(() => { db.fetchAdminData().then(setAdminData) }, [])
 
@@ -70,6 +75,13 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
             {ICONS.map(ic => (
               <button key={ic} type="button" className={'icon-opt' + (form.icon === ic ? ' sel' : '')}
                 onClick={() => set('icon', ic)}>{ic}</button>
+            ))}
+          </div>
+          <label>Skills que mejora (hasta {MAX_SKILLS_PER_GOAL})</label>
+          <div className="interests">
+            {SKILLS.map(s => (
+              <button key={s.id} type="button" className={'interest' + (form.skills.includes(s.id) ? ' on' : '')}
+                onClick={() => toggleSkill(s.id)}>{s.emoji} {s.name}</button>
             ))}
           </div>
           <label>Imagen del reto (logo o foto del premio, opcional)</label>
