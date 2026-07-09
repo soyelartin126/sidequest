@@ -1,15 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, SKINS, HAIRS, SHIRTS, PANTS, SHOES, EYES, HAIR_STYLES, BODY_SHAPES } from './Avatar.jsx'
+import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, SKINS, HAIRS, SHIRTS, BODY_SHAPES } from './Avatar.jsx'
 import * as db from './supabase.js'
 import Admin from './Admin.jsx'
+import Profile from './Profile.jsx'
+import { GoalCard, Goals, NewGoal, GoalDetail } from './Goals.jsx'
+import { Bar, Pwd } from './ui.jsx'
 import { resizePhoto } from './utils.js'
 import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
-  makeRedeemCode, ITEMS, earnedItems, itemById, eligibleLoot, tierForDays, TIERS, DURATIONS, goalDays, isPermanent,
+  makeRedeemCode, ITEMS, earnedItems, itemById, isPermanent,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
-  applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById, INTERESTS, ICONS,
+  applyShields, addShield, SHIELD_CAP, bgById, INTERESTS,
   COIN_CHECKIN, COIN_GOAL, COIN_QUEST, WELCOME_COINS, itemPrice, COVER_PRICE,
-  SKILLS, MAX_SKILLS_PER_GOAL, SKILL_XP_PER_CHECKIN, skillLevel,
+  SKILL_XP_PER_CHECKIN, SKILL_STREAK_MILESTONE, SKILL_STREAK_BONUS_COINS, skillStreak, SKILLS,
 } from './game.js'
 
 // animo del personaje/mascota segun estado del jugador
@@ -20,37 +23,6 @@ function moodOf(goals, stk, bestStreak) {
 }
 
 const THEMES = ['Familia', 'Trabajo', 'Amigos', 'Estudio', 'Deporte', 'Otro']
-
-function Bar({ frac }) {
-  const total = 16
-  const on = Math.round(Math.min(1, Math.max(0, frac)) * total)
-  return (
-    <div className="bar">
-      {Array.from({ length: total }, (_, i) => <span key={i} className={i < on ? 'on' : ''} />)}
-    </div>
-  )
-}
-
-function TierBadge({ weeks }) {
-  const tier = tierForDays(Math.round(weeks * 7))
-  return <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
-}
-
-// input de contraseña con ojo para mostrar/ocultar
-function Pwd({ value, onChange, placeholder }) {
-  const [show, setShow] = useState(false)
-  return (
-    <div className="pwd">
-      <input type={show ? 'text' : 'password'} value={value} onChange={onChange} placeholder={placeholder} />
-      <button type="button" className="pwd-eye" aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-        onClick={() => setShow(s => !s)}>
-        {show
-          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 002.8 2.8" /><path d="M9.9 4.3A9.6 9.6 0 0112 4c5.5 0 9 5.5 9 8a12 12 0 01-2.1 3.1M6.2 6.2C3.7 7.8 2 10 2 12c0 2.5 3.5 8 9 8 1 0 2-.2 2.9-.5" /></svg>
-          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>}
-      </button>
-    </div>
-  )
-}
 
 // ---------- Onboarding: bienvenida + intereses + misiones sugeridas ----------
 function Onboarding({ profile, onFinish }) {
@@ -269,10 +241,18 @@ export default function App() {
     await db.insertCheckin(profile.id, goal.id, { day: dayKey(), note, photo })
     const p = { ...profile, xp: profile.xp + XP_CHECKIN }
     p.avatar = { ...(profile.avatar || {}), coins: (profile.avatar?.coins || 0) + COIN_CHECKIN }
+    const skillMilestones = []
     if (goal.skills?.length > 0) {
       const skillsXp = { ...(p.avatar.skills || {}) }
-      goal.skills.forEach(sid => { skillsXp[sid] = (skillsXp[sid] || 0) + SKILL_XP_PER_CHECKIN })
+      const patchedGoals = goals.map(x => x.id === goal.id
+        ? { ...x, checkins: [...x.checkins, { day: dayKey(), note, photo }] } : x)
+      goal.skills.forEach(sid => {
+        skillsXp[sid] = (skillsXp[sid] || 0) + SKILL_XP_PER_CHECKIN
+        const days = skillStreak(patchedGoals, sid)
+        if (days > 0 && days % SKILL_STREAK_MILESTONE === 0) skillMilestones.push({ sid, days })
+      })
       p.avatar.skills = skillsXp
+      if (skillMilestones.length > 0) p.avatar.coins = (p.avatar.coins || 0) + skillMilestones.length * SKILL_STREAK_BONUS_COINS
     }
     const willComplete = goal.checkins.length + 1 >= goalTarget(goal)
     if (willComplete) {
@@ -286,6 +266,13 @@ export default function App() {
       if (p.avatar.shields > beforeSh) setTimeout(() => notify('🛡 +1 escudo de racha'), 1400)
     } else {
       notify(`Check-in listo · +${XP_CHECKIN} XP · +${COIN_CHECKIN} 🪙`)
+    }
+    if (skillMilestones.length > 0) {
+      const allSkills = [...SKILLS, ...(profile.avatar?.customSkills || [])]
+      skillMilestones.forEach((m, i) => {
+        const s = allSkills.find(x => x.id === m.sid)
+        setTimeout(() => notify(`🔥 Racha de ${m.days} días en ${s?.name || 'skill'} · +${SKILL_STREAK_BONUS_COINS} 🪙`), 1400 + i * 1400)
+      })
     }
     const stNow = streak(goals) + 1
     p.bestStreak = Math.max(p.bestStreak || 0, stNow)
@@ -328,7 +315,13 @@ export default function App() {
 
   let overlay = null
   if (view?.name === 'newGoal') {
-    overlay = <NewGoal owned={earned} onBack={() => setView(null)} onCreate={async g => {
+    overlay = <NewGoal owned={earned} customSkills={profile.avatar?.customSkills || []}
+      onAddSkill={async skill => {
+        const list = [...(profile.avatar?.customSkills || []), skill]
+        await db.saveProfile({ ...profile, avatar: { ...profile.avatar, customSkills: list } })
+        refresh()
+      }}
+      onBack={() => setView(null)} onCreate={async g => {
       await db.insertGoal(profile.id, g)
       notify('¡Nueva misión creada!')
       setView(null); refresh()
@@ -589,255 +582,6 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingR
   )
 }
 
-function GoalCard({ g, onClick }) {
-  const t = goalTarget(g)
-  const done = g.checkins.length
-  const perm = isPermanent(g)
-  const reward = g.rewardItem && itemById(g.rewardItem)
-  return (
-    <div className="card" onClick={onClick} style={{ cursor: 'pointer' }}>
-      {g.image && <img src={g.image} alt="" style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 110, objectFit: 'cover' }} />}
-      <div className="row">
-        <div className="grow">
-          <h3>{g.icon && <span>{g.icon} </span>}{g.title}</h3>
-          {g.sponsor
-            ? <div className="muted small">Patrocina: {g.sponsor}</div>
-            : <div className="muted small">{g.questId ? 'Reto grupal · ' : 'Objetivo personal · '}
-                {perm ? <span className="chip" style={{ background: '#3582DB', color: '#fff' }}>♾ Permanente</span> : <TierBadge weeks={g.weeks} />}</div>}
-        </div>
-        <b>{perm ? `${done} ♾` : `${done}/${t}`}</b>
-      </div>
-      <div className="spacer" />
-      {!perm && <Bar frac={done / t} />}
-      {g.skills?.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
-          {g.skills.map(sid => {
-            const s = SKILLS.find(x => x.id === sid)
-            return s && <span key={sid} className="chip">{s.emoji} {s.name}</span>
-          })}
-        </div>
-      )}
-      {g.prize && <div><span className="chip">🎁 {g.prize}</span></div>}
-      {reward && <div><span className="chip"><ItemSprite id={reward.id} size={14} /> Botín: {reward.name}</span></div>}
-      {canCheckinToday(g)
-        ? <div><span className="chip ok">Check-in pendiente hoy</span></div>
-        : g.status === 'active' && <div><span className="chip">✔ Hecho por hoy</span></div>}
-    </div>
-  )
-}
-
-// ---------- Misiones ----------
-function Goals({ goals, onGoal, onNew }) {
-  const active = goals.filter(g => g.status === 'active')
-  const completed = goals.filter(g => g.status === 'completed')
-  return (
-    <>
-      <h1>Misiones</h1>
-      <button onClick={onNew}>+ Nueva misión</button>
-      <h2>Activas ({active.length})</h2>
-      {active.length === 0 && <p className="muted">Nada por aquí todavía.</p>}
-      {active.map(g => <GoalCard key={g.id} g={g} onClick={() => onGoal(g)} />)}
-      <h2>Completadas ({completed.length})</h2>
-      {completed.map(g => (
-        <div key={g.id} className="card flat row" onClick={() => onGoal(g)} style={{ cursor: 'pointer' }}>
-          <span style={{ fontSize: 22 }}>🏅</span>
-          <div className="grow">
-            <b>{g.title}</b>
-            <div className="muted small">{g.sponsor ? `Reto de ${g.sponsor}` : 'Objetivo personal'}</div>
-          </div>
-        </div>
-      ))}
-    </>
-  )
-}
-
-function NewGoal({ owned, onBack, onCreate }) {
-  const [title, setTitle] = useState('')
-  const [icon, setIcon] = useState(ICONS[0])
-  const [skills, setSkills] = useState([])
-  const toggleSkill = id => setSkills(s => s.includes(id) ? s.filter(x => x !== id)
-    : s.length < MAX_SKILLS_PER_GOAL ? [...s, id] : s)
-  const [freq, setFreq] = useState(3)
-  const [durIdx, setDurIdx] = useState(5)
-  const weeks = DURATIONS[durIdx].weeks
-  const permanent = weeks === 0
-  const [reward, setReward] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const tier = tierForDays(Math.round(weeks * 7))
-  const loot = eligibleLoot(freq, weeks, owned)
-  if (reward && !loot.some(it => it.id === reward)) setReward(null)
-  return (
-    <>
-      <div className="topbar">
-        <button className="sec mini" onClick={onBack}>← Volver</button>
-        <h1>Nueva misión</h1>
-      </div>
-      <div className="card">
-        <label>¿Qué quieres lograr?</label>
-        <input value={title} onChange={e => setTitle(e.target.value)}
-          placeholder="Ej: Ir al gym, leer 20 min, salir a trotar" maxLength={60} />
-        <label>Ícono</label>
-        <div className="icon-picker">
-          {ICONS.map(ic => (
-            <button key={ic} type="button" className={'icon-opt' + (icon === ic ? ' sel' : '')}
-              onClick={() => setIcon(ic)}>{ic}</button>
-          ))}
-        </div>
-        <label>Skills que mejora (hasta {MAX_SKILLS_PER_GOAL})</label>
-        <div className="interests">
-          {SKILLS.map(s => (
-            <button key={s.id} type="button" className={'interest' + (skills.includes(s.id) ? ' on' : '')}
-              onClick={() => toggleSkill(s.id)}>{s.emoji} {s.name}</button>
-          ))}
-        </div>
-        <label>Frecuencia: {freq === 7 ? 'Todos los días' : `${freq} veces por semana`}</label>
-        <input type="range" min="1" max="7" value={freq} onChange={e => setFreq(+e.target.value)} />
-        <label>Duración: {DURATIONS[durIdx].label}</label>
-        <input type="range" min="0" max={DURATIONS.length - 1} value={durIdx} onChange={e => setDurIdx(+e.target.value)} />
-        {permanent ? (
-          <p className="muted small">
-            ♾ Reto permanente · sin fecha de término · máximo 1 check-in por día. Suma XP y mantiene tu racha; no tiene premio de fin porque no termina.
-          </p>
-        ) : (
-          <>
-            <p className="muted small">
-              Meta total: {Math.max(1, Math.round(freq * weeks))} check-ins · máximo 1 por día · dificultad:{' '}
-              <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
-            </p>
-            <div className="tier-legend">
-              <p className="muted small" style={{ margin: '0 0 8px' }}>
-                La dificultad depende de cuántos días dura tu misión: mientras más larga, más difícil y mejor es el botín que puedes ganar.
-              </p>
-              {Object.entries(TIERS).map(([id, t]) => (
-                <div key={id} className="tier-row">
-                  <span className="chip" style={{ background: t.color, color: '#fff', minWidth: 78, textAlign: 'center' }}>{t.name}</span>
-                  <span className="muted small">{t.maxDays === Infinity ? `${t.minDays}+ días` : `${t.minDays}–${t.maxDays} días`}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {permanent ? (
-        <div className="card">
-          <p className="muted small">Los retos permanentes no tienen botín de fin: te motivan con XP diario y tu racha.</p>
-          <button disabled={!title.trim() || busy} onClick={async () => {
-            setBusy(true)
-            await onCreate({ title: title.trim(), icon, skills, freqPerWeek: freq, weeks, rewardItem: null })
-          }}>{busy ? 'Creando…' : 'Crear reto permanente'}</button>
-        </div>
-      ) : (
-        <div className="card">
-          <h3>Elige tu botín 🗡</h3>
-          <p className="muted small">
-            Completa la misión y ganas el objeto. Misiones más largas e intensas desbloquean mejor botín.
-          </p>
-          {loot.length === 0 && <p className="muted">Ya tienes todo el botín de este nivel. ¡Sube la duración o frecuencia!</p>}
-          <div className="items">
-            {loot.map(it => (
-              <div key={it.id} className={'item' + (reward === it.id ? ' equipped' : '')}
-                onClick={() => setReward(r => r === it.id ? null : it.id)}>
-                <ItemSprite id={it.id} />
-                <div className="nm">{it.name}</div>
-                <div className="muted small" style={{ color: TIERS[it.tier].color, fontWeight: 700 }}>
-                  {TIERS[it.tier].name} · {it.reqCheckins}✔
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="spacer" />
-          <button disabled={!title.trim() || busy} onClick={async () => {
-            setBusy(true)
-            await onCreate({ title: title.trim(), icon, skills, freqPerWeek: freq, weeks, rewardItem: reward })
-          }}>
-            {busy ? 'Creando…' : reward ? `Crear misión (botín: ${itemById(reward).name})` : 'Crear misión sin botín'}
-          </button>
-        </div>
-      )}
-    </>
-  )
-}
-
-function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
-  const [note, setNote] = useState('')
-  const [file, setFile] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const t = goalTarget(g)
-  const perm = isPermanent(g)
-  const can = canCheckinToday(g)
-  return (
-    <>
-      <div className="topbar">
-        <button className="sec mini" onClick={onBack}>← Volver</button>
-        <h1 style={{ fontSize: 18 }}>{g.title}</h1>
-      </div>
-      <div className="card">
-        {g.sponsor && <span className="chip prim">Reto de {g.sponsor}</span>}
-        {g.prize && <span className="chip">🎁 {g.prize}</span>}
-        {perm && <span className="chip" style={{ background: '#3582DB', color: '#fff' }}>♾ Permanente</span>}
-        <div className="spacer" />
-        {perm ? (
-          <div className="muted small">{g.checkins.length} check-ins · {g.freqPerWeek === 7 ? 'todos los días' : `${g.freqPerWeek}x por semana`} · sin fecha de término</div>
-        ) : (
-          <>
-            <Bar frac={g.checkins.length / t} />
-            <div className="muted small">{g.checkins.length} de {t} check-ins · {g.freqPerWeek}x por semana · {goalDays(g)} días</div>
-          </>
-        )}
-      </div>
-
-      {g.status === 'completed' ? (
-        <div className="card center">
-          <h3>🏆 ¡Misión completada!</h3>
-          {g.redeemCode && !g.redeemed && <button className="acc" onClick={onRedeem}>Ver mi canje</button>}
-          {g.redeemed && <p className="muted">Premio ya canjeado. ¡A por la próxima!</p>}
-        </div>
-      ) : (
-        <div className="card">
-          <h3>Check-in de hoy</h3>
-          {can ? (
-            <>
-              <input value={note} onChange={e => setNote(e.target.value)}
-                placeholder="Nota opcional (¿cómo te fue?)" maxLength={80} />
-              <label className="muted small">Foto de evidencia (opcional)</label>
-              <input type="file" accept="image/*" capture="environment"
-                onChange={e => setFile(e.target.files?.[0] || null)} />
-              <button disabled={busy} onClick={async () => {
-                setBusy(true)
-                await onCheckin(g, note, file)
-                setNote(''); setFile(null); setBusy(false)
-              }}>
-                {busy ? 'Guardando…' : `✔ Reportar avance (+${XP_CHECKIN} XP)`}
-              </button>
-            </>
-          ) : <p className="muted">Ya hiciste el check-in de hoy. Vuelve mañana 💪</p>}
-        </div>
-      )}
-
-      <h2>Historial</h2>
-      <div className="card flat">
-        {g.checkins.length === 0 && <p className="muted">Aún no hay check-ins.</p>}
-        {[...g.checkins].reverse().map((c, i) => (
-          <div key={i} className="hist">
-            {c.photo ? <img className="photo-thumb" src={c.photo} alt="" /> : <span style={{ fontSize: 20 }}>✔</span>}
-            <div className="grow">
-              <b>{c.day}</b>
-              {c.note && <div className="muted small">{c.note}</div>}
-            </div>
-            <span className="muted small">+{XP_CHECKIN} XP</span>
-          </div>
-        ))}
-      </div>
-      {g.status === 'active' && (
-        <button className="sec" onClick={() => confirm('¿Abandonar esta misión?') && onDelete()}>
-          Abandonar misión
-        </button>
-      )}
-    </>
-  )
-}
-
 // ---------- Premios / retos de empresas ----------
 function Quests({ quests, goals, pendingRedeem, onJoin, onRedeem }) {
   const joined = new Set(goals.map(g => g.questId).filter(Boolean))
@@ -1073,210 +817,6 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
           <button className="sec" onClick={() => setForm(null)}>Cancelar</button>
         </div>
       )}
-    </>
-  )
-}
-
-// ---------- Perfil ----------
-function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onLogout }) {
-  const [editing, setEditing] = useState(false)
-  const completed = goals.filter(g => g.status === 'completed').length
-  const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
-  const curBg = profile.avatar?.bg || 'niebla'
-  const curCover = profile.avatar?.cover || COVERS[0].id
-  const Sw = ({ colors, k }) => (
-    <div className="swatches">
-      {colors.map(c => (
-        <div key={c} className={'swatch' + (profile.avatar[k] === c ? ' sel' : '')}
-          style={{ background: c }} onClick={() => onAvatar({ ...profile.avatar, [k]: c })} />
-      ))}
-    </div>
-  )
-  return (
-    <>
-      <div className="card center">
-        <div className="row" style={{ justifyContent: 'center' }}>
-          <Avatar avatar={profile.avatar} equipped={profile.equipped} size={120} mood={mood} />
-          <Pet color={petColor} size={70} mood={mood} name="Pixi" />
-        </div>
-        <h1>{profile.name}</h1>
-        <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
-        <div className="muted small">
-          {profile.xp} XP · mejor racha: {profile.bestStreak || 0} días · {completed} misiones completadas
-        </div>
-        <div className="spacer" />
-        <button className="sec mini" onClick={() => setEditing(e => !e)}>
-          {editing ? 'Listo' : '✏️ Editar personaje'}
-        </button>
-      </div>
-
-      {editing && (
-        <div className="card">
-          <label>Forma</label>
-          <div className="swatches">
-            {BODY_SHAPES.map(b => (
-              <div key={b.id} title={b.name}
-                className={'hair-opt' + ((profile.avatar?.body || 'a') === b.id ? ' sel' : '')}
-                onClick={() => onAvatar({ ...profile.avatar, body: b.id })}>
-                <Avatar avatar={{ ...profile.avatar, body: b.id }} size={42} mood="happy" />
-              </div>
-            ))}
-          </div>
-          <label>Piel</label><Sw colors={SKINS} k="skin" />
-          <label>Peinado</label>
-          <div className="swatches">
-            {HAIR_STYLES.map(h => (
-              <div key={h.id} title={h.name}
-                className={'hair-opt' + ((profile.avatar?.hairStyle || 'clasico') === h.id ? ' sel' : '')}
-                onClick={() => onAvatar({ ...profile.avatar, hairStyle: h.id })}>
-                <Avatar avatar={{ ...profile.avatar, hairStyle: h.id }} size={42} mood="happy" />
-              </div>
-            ))}
-          </div>
-          <label>Pelo</label><Sw colors={HAIRS} k="hair" />
-          <label>Ojos</label><Sw colors={EYES} k="eye" />
-          <label>Polera</label><Sw colors={SHIRTS} k="shirt" />
-          <label>Pantalón</label><Sw colors={PANTS} k="pants" />
-          <label>Zapatos</label><Sw colors={SHOES} k="shoes" />
-          <label>Color de tu mascota</label>
-          <div className="swatches">
-            {PET_COLORS.map(c => (
-              <div key={c} className={'swatch' + (petColor === c ? ' sel' : '')}
-                style={{ background: c }} onClick={() => onAvatar({ ...profile.avatar, petColor: c })} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <h2>Skills</h2>
-      <div className="card">
-        <p className="muted small">Suben cuando haces check-in en misiones que las tengan asociadas.</p>
-        {SKILLS.map(s => {
-          const { level, progress } = skillLevel(profile.avatar?.skills?.[s.id] || 0)
-          return (
-            <div key={s.id} style={{ marginBottom: 10 }}>
-              <div className="row">
-                <div className="grow">{s.emoji} {s.name}</div>
-                <b>Nivel {level}</b>
-              </div>
-              <Bar frac={progress} />
-            </div>
-          )
-        })}
-      </div>
-
-      <h2>Portada</h2>
-      <div className="card">
-        <p className="muted small">La imagen de portada de tu inicio. Se desbloquean subiendo de nivel.</p>
-        <div className="bgs">
-          {COVERS.map(c => {
-            const locked = lvl.level < c.minLevel && !(profile.avatar?.ownedCovers || []).includes(c.id)
-            return (
-              <div key={c.id} className={'cover-opt' + (curCover === c.id ? ' sel' : '') + (locked ? ' locked' : '')}
-                onClick={() => !locked && onAvatar({ ...profile.avatar, cover: c.id })}>
-                <div className="cover-thumb"><CoverThumb id={c.id} /></div>
-                <div className="bg-nm">{locked ? `🔒 Nv ${c.minLevel}` : c.name}</div>
-              </div>
-            )
-          })}
-          {banners.filter(b => (profile.avatar?.ownedCovers || []).includes(b.id)).map(b => (
-            <div key={b.id} className={'cover-opt' + (curCover === b.id ? ' sel' : '')}
-              onClick={() => onAvatar({ ...profile.avatar, cover: b.id })}>
-              <div className="cover-thumb"><CoverThumb image={b.image} /></div>
-              <div className="bg-nm">{b.name || 'Banner'}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <h2>Fondo de la app</h2>
-      <div className="card">
-        <p className="muted small">3 gratis para todos. Los demás se desbloquean subiendo de nivel.</p>
-        <div className="bgs">
-          {BACKGROUNDS.map(b => {
-            const locked = lvl.level < b.minLevel
-            return (
-              <div key={b.id} className={'bg-opt' + (curBg === b.id ? ' sel' : '') + (locked ? ' locked' : '')}
-                onClick={() => !locked && onAvatar({ ...profile.avatar, bg: b.id })}>
-                <div className="bg-swatch" style={{ background: b.css }} />
-                <div className="bg-nm">{locked ? `🔒 Nv ${b.minLevel}` : b.name}</div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <h2>Inventario</h2>
-      <p className="muted small">
-        Toca un objeto desbloqueado para ponérselo a tu personaje. El botín se gana
-        eligiéndolo al crear una misión; los logros se desbloquean solos.
-      </p>
-      {Object.entries(TIERS).map(([tid, tier]) => {
-        const group = ITEMS.filter(it => it.kind === 'loot' && it.tier === tid)
-        return (
-          <div key={tid}>
-            <h2 style={{ color: tier.color }}>{tier.name} <span className="muted small">
-              ({tier.maxDays === Infinity ? `${tier.minDays}+ días` : `${tier.minDays}-${tier.maxDays} días`})</span></h2>
-            <div className="items">
-              {group.map(it => {
-                const has = earned.has(it.id)
-                const eq = profile.equipped?.[it.slot] === it.id
-                return (
-                  <div key={it.id} className={'item' + (has ? '' : ' locked') + (eq ? ' equipped' : '')}
-                    title={it.desc} onClick={() => has && onEquip(it)}>
-                    <ItemSprite id={it.id} />
-                    <div className="nm">{it.name}</div>
-                    {!has && <div className="muted small">🔒 {it.reqCheckins}✔</div>}
-                    {eq && <div className="muted small">puesto</div>}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
-      <h2>Logros</h2>
-      <div className="items">
-        {ITEMS.filter(it => it.kind === 'logro').map(it => {
-          const has = earned.has(it.id)
-          const eq = profile.equipped?.[it.slot] === it.id
-          return (
-            <div key={it.id} className={'item' + (has ? '' : ' locked') + (eq ? ' equipped' : '')}
-              title={it.desc} onClick={() => has && onEquip(it)}>
-              <ItemSprite id={it.id} />
-              <div className="nm">{it.name}</div>
-              {!has && <div className="muted small">🔒</div>}
-              {eq && <div className="muted small">puesto</div>}
-            </div>
-          )
-        })}
-      </div>
-
-      <h2>Preferencias</h2>
-      <div className="card">
-        <div className="row">
-          <div className="grow">
-            <b>Modo oscuro</b>
-            <div className="muted small">Cambia el tema de la app</div>
-          </div>
-          <button className={'toggle' + (theme === 'dark' ? ' on' : '')} role="switch"
-            aria-checked={theme === 'dark'} aria-label="Modo oscuro" onClick={onToggleTheme}>
-            <span className="knob" />
-          </button>
-        </div>
-      </div>
-
-      <h2>Cuenta</h2>
-      <div className="card">
-        {profile.isAdmin && (
-          <>
-            <button className="acc" onClick={onAdmin}>🛠 Panel de administración</button>
-            <div className="spacer" />
-          </>
-        )}
-        <button className="sec" onClick={onLogout}>Cerrar sesión</button>
-      </div>
-      <p className="muted small center">LevelApp v0.3 · sincronizado en la nube ☁️</p>
     </>
   )
 }

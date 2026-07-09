@@ -17,7 +17,7 @@ Deno.serve(async () => {
 
   const { data: goals, error } = await sb
     .from('goals')
-    .select('user_id, title, checkins(day)')
+    .select('user_id, title, meta, checkins(day)')
     .eq('status', 'active')
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 })
@@ -27,19 +27,27 @@ Deno.serve(async () => {
     const doneToday = (g.checkins || []).some(c => c.day === today)
     if (doneToday) continue
     const list = pendingByUser.get(g.user_id) || []
-    list.push(g.title)
+    list.push({ title: g.title, icon: g.meta?.icon || '🎯' })
     pendingByUser.set(g.user_id, list)
   }
 
   let sent = 0
-  for (const [userId, titles] of pendingByUser) {
+  for (const [userId, pending] of pendingByUser) {
     const { data: userRes } = await sb.auth.admin.getUserById(userId)
     const email = userRes?.user?.email
     if (!email) continue
 
     const { data: profile } = await sb.from('profiles').select('name').eq('id', userId).single()
     const name = profile?.name || ''
-    const items = titles.map(t => `<li>${t}</li>`).join('')
+    const items = pending.map(g => `
+      <tr>
+        <td style="width:56px; padding:6px 12px 6px 0;">
+          <div style="width:48px; height:48px; line-height:48px; text-align:center;
+            border-radius:12px; background:#F1F3F5; font-size:26px;">${g.icon}</div>
+        </td>
+        <td style="padding:6px 0; font-size:15px; color:#16263F;">${g.title}</td>
+      </tr>
+    `).join('')
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -55,7 +63,7 @@ Deno.serve(async () => {
           <div style="font-family: sans-serif; color: #16263F;">
             <h2>¿Registraste tus avances hoy?</h2>
             <p>Hola ${name}, todavía te falta el check-in de hoy en:</p>
-            <ul>${items}</ul>
+            <table role="presentation" style="width:100%; border-collapse:collapse;">${items}</table>
             <p>Entra a LevelApp antes de medianoche para no perder tu racha.</p>
             <p style="margin-top: 24px;">
               <a href="https://lvlapp.cl" style="background: #F5811F; color: #ffffff; padding: 12px 24px;

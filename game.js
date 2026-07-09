@@ -62,6 +62,21 @@ export function streak(goals, frozen = []) {
   return count
 }
 
+// racha de una skill puntual: dias consecutivos con check-in en misiones
+// que tengan esa skill asociada (sin escudos, es mas simple que la racha global)
+export function skillStreak(goals, skillId) {
+  const days = new Set()
+  goals.forEach(g => {
+    if ((g.skills || []).includes(skillId)) g.checkins.forEach(c => days.add(c.day))
+  })
+  if (days.size === 0) return 0
+  let count = 0
+  const cursor = new Date()
+  if (!days.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1)
+  while (days.has(dayKey(cursor))) { count++; cursor.setDate(cursor.getDate() - 1) }
+  return count
+}
+
 // ---- Escudos de racha (streak freeze) ----
 // Se guardan dentro del jsonb `avatar`: avatar.shields (n) y avatar.frozenDays ([]).
 export const SHIELD_CAP = 3
@@ -257,6 +272,9 @@ export const SKILLS = [
 export const MAX_SKILLS_PER_GOAL = 3
 export const SKILL_XP_PER_CHECKIN = 10
 export const SKILL_XP_PER_LEVEL = 50
+// cada N dias seguidos de una skill, bono de monedas para dar dinamismo
+export const SKILL_STREAK_MILESTONE = 5
+export const SKILL_STREAK_BONUS_COINS = 20
 
 export function skillLevel(xp = 0) {
   const level = Math.floor(xp / SKILL_XP_PER_LEVEL) + 1
