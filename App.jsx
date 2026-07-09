@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, SKINS, HAIRS, SHIRTS, PANTS, SHOES, EYES, HAIR_STYLES } from './Avatar.jsx'
+import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, SKINS, HAIRS, SHIRTS, PANTS, SHOES, EYES, HAIR_STYLES, BODY_SHAPES } from './Avatar.jsx'
 import * as db from './supabase.js'
 import Admin from './Admin.jsx'
 import { resizePhoto } from './utils.js'
@@ -484,6 +484,16 @@ function AuthScreen({ onNotify, toast }) {
             <h1>Crea tu personaje</h1>
           </div>
           <div className="card">
+            <label>Forma</label>
+            <div className="swatches">
+              {BODY_SHAPES.map(b => (
+                <div key={b.id} title={b.name}
+                  className={'hair-opt' + ((avatar.body || 'a') === b.id ? ' sel' : '')}
+                  onClick={() => setAvatar(a => ({ ...a, body: b.id }))}>
+                  <Avatar avatar={{ ...avatar, body: b.id }} size={42} />
+                </div>
+              ))}
+            </div>
             <label>Piel</label><Sw colors={SKINS} k="skin" />
             <label>Pelo</label><Sw colors={HAIRS} k="hair" />
             <label>Polera</label><Sw colors={SHIRTS} k="shirt" />
@@ -1078,6 +1088,16 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
 
       {editing && (
         <div className="card">
+          <label>Forma</label>
+          <div className="swatches">
+            {BODY_SHAPES.map(b => (
+              <div key={b.id} title={b.name}
+                className={'hair-opt' + ((profile.avatar?.body || 'a') === b.id ? ' sel' : '')}
+                onClick={() => onAvatar({ ...profile.avatar, body: b.id })}>
+                <Avatar avatar={{ ...profile.avatar, body: b.id }} size={42} mood="happy" />
+              </div>
+            ))}
+          </div>
           <label>Piel</label><Sw colors={SKINS} k="skin" />
           <label>Peinado</label>
           <div className="swatches">

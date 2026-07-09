@@ -1,7 +1,7 @@
 // Avatar pixel-art renderizado como SVG a partir de grillas de caracteres.
 // s=piel e=ojo b=polera p=pantalon z=zapato .=vacio  (el pelo es capa aparte)
 
-const BODY = [
+const BODY_A = [
   '..............',
   '..............',
   '..ssssssssss..',
@@ -19,6 +19,32 @@ const BODY = [
   '...pp....pp...',
   '...pp....pp...',
   '...zz....zz...',
+]
+
+// Forma B: cintura mas marcada y caderas mas anchas (mismo grid 14x17 para calzar con los overlays)
+const BODY_B = [
+  '..............',
+  '..............',
+  '..ssssssssss..',
+  '..ssssssssss..',
+  '..ssessse.ss..',
+  '...ssssssss...',
+  '...ss.ss.ss...',
+  '....ssssss....',
+  '.....ssss.....',
+  '...bbbbbbbb...',
+  '..bbbbbbbbbb..',
+  '.sbbbbbbbbbbs.',
+  '..sbbbbbbbbs..',
+  '..pppppppppp..',
+  '...pp....pp...',
+  '...pp....pp...',
+  '...zz....zz...',
+]
+const BODIES = { a: BODY_A, b: BODY_B }
+export const BODY_SHAPES = [
+  { id: 'a', name: 'Forma A' },
+  { id: 'b', name: 'Forma B' },
 ]
 
 // ---- Peinados (capa de pelo, [fila, col]) ----
@@ -111,12 +137,12 @@ const MOUTHS = {
 
 export default function Avatar({ avatar, equipped = {}, size = 120, mood = 'happy' }) {
   const {
-    skin = SKINS[0], hair = HAIRS[1], shirt = SHIRTS[0],
+    skin = SKINS[0], hair = HAIRS[1], shirt = SHIRTS[0], body = 'a',
     hairStyle = 'clasico', pants = PANTS[0], shoes = SHOES[0], eye = EYES[0],
   } = avatar || {}
   const cmap = { s: skin, e: eye, b: shirt, p: pants, z: shoes }
   const cells = []
-  BODY.forEach((row, y) => {
+  ;(BODIES[body] || BODY_A).forEach((row, y) => {
     row.split('').forEach((c, x) => {
       if (cmap[c]) cells.push(<rect key={`b${x}-${y}`} x={x} y={y + 2} width="1" height="1" fill={cmap[c]} />)
     })
