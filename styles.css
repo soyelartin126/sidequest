@@ -22,6 +22,10 @@ body {
 
 .app { padding: 16px 16px 100px; }
 
+/* login con fondo ilustrado: texto/tarjeta legibles sobre la imagen */
+.auth-bg .logo, .auth-bg .tagline { color: #fff; }
+.auth-bg .card { background: rgba(255, 255, 255, .94); }
+
 .logo {
   font-family: 'Inter Tight', 'Segoe UI', sans-serif;
   font-weight: 800; letter-spacing: -.5px;

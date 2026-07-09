@@ -130,12 +130,36 @@ export const BACKGROUNDS = [
   { id: 'atardecer', name: 'Atardecer', minLevel: 3,
     css: 'linear-gradient(160deg,#FFE0C2,#F5A45E)', dot: 'rgba(22,38,63,.06)' },
   { id: 'bosque', name: 'Bosque', minLevel: 4,
-    css: 'linear-gradient(160deg,#DDEFE4,#9FCBB0)', dot: 'rgba(22,38,63,.06)' },
+    css: 'linear-gradient(160deg,#DDEFE4,#9FCBB0)', dot: 'rgba(22,38,63,.06)',
+    image: '/backgrounds/forrest_day.png' },
   { id: 'lago', name: 'Lago', minLevel: 5,
     css: 'linear-gradient(160deg,#DDECFB,#8FBEE8)', dot: 'rgba(22,38,63,.06)' },
   { id: 'medianoche', name: 'Medianoche', minLevel: 6,
     css: 'linear-gradient(160deg,#1C2B45,#16263F)', dot: 'rgba(255,255,255,.08)' },
 ]
+
+// estilo de fondo de pantalla completa: imagen ilustrada si el fondo trae una,
+// si no el patron de puntitos sobre color/gradiente de siempre
+export function backgroundStyle(bg, dark) {
+  if (dark) return { minHeight: '100dvh' }
+  if (bg.image) {
+    return {
+      minHeight: '100dvh',
+      backgroundImage: `linear-gradient(rgba(10,20,15,.25), rgba(10,20,15,.45)), url(${bg.image})`,
+      backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed',
+    }
+  }
+  const isSolidBg = bg.css.startsWith('#')
+  return {
+    minHeight: '100dvh',
+    backgroundColor: isSolidBg ? bg.css : undefined,
+    backgroundImage: isSolidBg
+      ? `radial-gradient(${bg.dot} 1.5px, transparent 1.5px)`
+      : `radial-gradient(${bg.dot} 1.5px, transparent 1.5px), ${bg.css}`,
+    backgroundSize: '26px 26px, 100% 100%',
+    backgroundAttachment: 'fixed',
+  }
+}
 export const bgById = id => BACKGROUNDS.find(b => b.id === id) || BACKGROUNDS[0]
 
 // semana actual (Lun-Dom) con estado por dia

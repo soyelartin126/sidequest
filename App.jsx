@@ -10,7 +10,7 @@ import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
   makeRedeemCode, ITEMS, earnedItems, itemById, isPermanent,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
-  applyShields, addShield, SHIELD_CAP, bgById, INTERESTS,
+  applyShields, addShield, SHIELD_CAP, bgById, backgroundStyle, INTERESTS,
   COIN_CHECKIN, COIN_GOAL, COIN_QUEST, WELCOME_COINS, itemPrice, COVER_PRICE,
   SKILL_XP_PER_CHECKIN, SKILL_STREAK_MILESTONE, SKILL_STREAK_BONUS_COINS, skillStreak, SKILLS,
 } from './game.js'
@@ -211,16 +211,7 @@ export default function App() {
   const pendingRedeem = goals.filter(g => g.redeemCode && !g.redeemed)
   const mood = moodOf(goals, stk, profile.bestStreak)
   const bg = bgById(profile.avatar?.bg)
-  const isSolidBg = bg.css.startsWith('#')
-  const appStyle = theme === 'dark' ? { minHeight: '100dvh' } : {
-    minHeight: '100dvh',
-    backgroundColor: isSolidBg ? bg.css : undefined,
-    backgroundImage: isSolidBg
-      ? `radial-gradient(${bg.dot} 1.5px, transparent 1.5px)`
-      : `radial-gradient(${bg.dot} 1.5px, transparent 1.5px), ${bg.css}`,
-    backgroundSize: '26px 26px, 100% 100%',
-    backgroundAttachment: 'fixed',
-  }
+  const appStyle = backgroundStyle(bg, theme === 'dark')
 
   const needsOnb = !onbDone && !profile.avatar?.onboarded && goals.length === 0
   if (needsOnb) return (
@@ -417,7 +408,7 @@ function AuthScreen({ onNotify, toast }) {
     if (error) onNotify(error.message)
   }
   return (
-    <div className="app">
+    <div className="app auth-bg" style={backgroundStyle(bgById('bosque'), false)}>
       {toast && <div className="toast">{toast}</div>}
       <div className="logo">LevelApp</div>
       <div className="tagline">Gamifica tu vida · cumple objetivos · gana premios reales</div>

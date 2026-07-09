@@ -133,7 +133,9 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
             return (
               <div key={b.id} className={'bg-opt' + (curBg === b.id ? ' sel' : '') + (locked ? ' locked' : '')}
                 onClick={() => !locked && onAvatar({ ...profile.avatar, bg: b.id })}>
-                <div className="bg-swatch" style={{ background: b.css }} />
+                <div className="bg-swatch" style={b.image
+                  ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : { background: b.css }} />
                 <div className="bg-nm">{locked ? `🔒 Nv ${b.minLevel}` : b.name}</div>
               </div>
             )
