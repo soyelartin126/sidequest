@@ -57,6 +57,12 @@ Deno.serve(async () => {
             <p>Hola ${name}, todavía te falta el check-in de hoy en:</p>
             <ul>${items}</ul>
             <p>Entra a LevelApp antes de medianoche para no perder tu racha.</p>
+            <p style="margin-top: 24px;">
+              <a href="https://lvlapp.cl" style="background: #F5811F; color: #ffffff; padding: 12px 24px;
+                border-radius: 999px; text-decoration: none; font-weight: bold; display: inline-block;">
+                Abrir LevelApp
+              </a>
+            </p>
           </div>
         `,
       }),
