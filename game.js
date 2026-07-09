@@ -238,6 +238,12 @@ export function earnedItems(state) {
   return ids
 }
 
+// ---- Iconos elegibles para misiones y retos (emoji por ahora, luego imagenes) ----
+export const ICONS = [
+  '🎯', '🏃', '🥗', '📚', '📖', '🎨', '💰', '🧘',
+  '🏠', '💬', '💪', '🔥', '😴', '💧', '✍️', '🎵',
+]
+
 // ---- Intereses para el onboarding + misiones sugeridas ----
 export const INTERESTS = [
   { id: 'deporte', name: 'Deporte', emoji: '🏃', ideas: [

@@ -7,7 +7,7 @@ import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
   makeRedeemCode, ITEMS, earnedItems, itemById, eligibleLoot, tierForDays, TIERS, DURATIONS, goalDays, isPermanent,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
-  applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById, INTERESTS,
+  applyShields, addShield, SHIELD_CAP, BACKGROUNDS, bgById, INTERESTS, ICONS,
   COIN_CHECKIN, COIN_GOAL, COIN_QUEST, WELCOME_COINS, itemPrice, COVER_PRICE,
 } from './game.js'
 
@@ -60,7 +60,7 @@ function Onboarding({ profile, onFinish }) {
   const toggleSel = id => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
   const isPicked = d => picked.some(p => p.title === d.title)
   const pick = d => setPicked(p => isPicked(d) ? p.filter(x => x.title !== d.title) : [...p, d])
-  const ideas = INTERESTS.filter(i => sel.includes(i.id)).flatMap(i => i.ideas.map(d => ({ ...d, cat: i.name })))
+  const ideas = INTERESTS.filter(i => sel.includes(i.id)).flatMap(i => i.ideas.map(d => ({ ...d, cat: i.name, icon: i.emoji })))
   const how = [
     ['🎯', 'Crea misiones', 'objetivos con frecuencia y duración'],
     ['✔️', 'Reporta cada día', 'un check-in diario mantiene tu racha'],
@@ -118,6 +118,7 @@ function Onboarding({ profile, onFinish }) {
         <p className="muted small">Toca las que quieras empezar. Después puedes editarlas o crear más.</p>
         {ideas.map((d, i) => (
           <div key={i} className={'suggest' + (isPicked(d) ? ' on' : '')} onClick={() => pick(d)}>
+            <span style={{ fontSize: 22 }}>{d.icon}</span>
             <div className="grow">
               <b>{d.title}</b>
               <div className="muted small">{d.cat} · {d.freqPerWeek}x/sem · {d.weeks} sem</div>
@@ -128,7 +129,7 @@ function Onboarding({ profile, onFinish }) {
         <div className="spacer" />
         <button disabled={busy} onClick={async () => {
           setBusy(true)
-          const chosen = picked.map(d => ({ title: d.title, freqPerWeek: d.freqPerWeek, weeks: d.weeks }))
+          const chosen = picked.map(d => ({ title: d.title, icon: d.icon, freqPerWeek: d.freqPerWeek, weeks: d.weeks }))
           await onFinish(sel, chosen)
         }}>
           {busy ? 'Creando…' : picked.length ? `Empezar con ${picked.length} ${picked.length > 1 ? 'misiones' : 'misión'}` : 'Empezar sin misiones'}
@@ -582,7 +583,7 @@ function GoalCard({ g, onClick }) {
       {g.image && <img src={g.image} alt="" style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 110, objectFit: 'cover' }} />}
       <div className="row">
         <div className="grow">
-          <h3>{g.title}</h3>
+          <h3>{g.icon && <span>{g.icon} </span>}{g.title}</h3>
           {g.sponsor
             ? <div className="muted small">Patrocina: {g.sponsor}</div>
             : <div className="muted small">{g.questId ? 'Reto grupal · ' : 'Objetivo personal · '}
@@ -628,6 +629,7 @@ function Goals({ goals, onGoal, onNew }) {
 
 function NewGoal({ owned, onBack, onCreate }) {
   const [title, setTitle] = useState('')
+  const [icon, setIcon] = useState(ICONS[0])
   const [freq, setFreq] = useState(3)
   const [durIdx, setDurIdx] = useState(5)
   const weeks = DURATIONS[durIdx].weeks
@@ -647,6 +649,13 @@ function NewGoal({ owned, onBack, onCreate }) {
         <label>¿Qué quieres lograr?</label>
         <input value={title} onChange={e => setTitle(e.target.value)}
           placeholder="Ej: Ir al gym, leer 20 min, salir a trotar" maxLength={60} />
+        <label>Ícono</label>
+        <div className="icon-picker">
+          {ICONS.map(ic => (
+            <button key={ic} type="button" className={'icon-opt' + (icon === ic ? ' sel' : '')}
+              onClick={() => setIcon(ic)}>{ic}</button>
+          ))}
+        </div>
         <label>Frecuencia: {freq === 7 ? 'Todos los días' : `${freq} veces por semana`}</label>
         <input type="range" min="1" max="7" value={freq} onChange={e => setFreq(+e.target.value)} />
         <label>Duración: {DURATIONS[durIdx].label}</label>
@@ -681,7 +690,7 @@ function NewGoal({ owned, onBack, onCreate }) {
           <p className="muted small">Los retos permanentes no tienen botín de fin: te motivan con XP diario y tu racha.</p>
           <button disabled={!title.trim() || busy} onClick={async () => {
             setBusy(true)
-            await onCreate({ title: title.trim(), freqPerWeek: freq, weeks, rewardItem: null })
+            await onCreate({ title: title.trim(), icon, freqPerWeek: freq, weeks, rewardItem: null })
           }}>{busy ? 'Creando…' : 'Crear reto permanente'}</button>
         </div>
       ) : (
@@ -706,7 +715,7 @@ function NewGoal({ owned, onBack, onCreate }) {
           <div className="spacer" />
           <button disabled={!title.trim() || busy} onClick={async () => {
             setBusy(true)
-            await onCreate({ title: title.trim(), freqPerWeek: freq, weeks, rewardItem: reward })
+            await onCreate({ title: title.trim(), icon, freqPerWeek: freq, weeks, rewardItem: reward })
           }}>
             {busy ? 'Creando…' : reward ? `Crear misión (botín: ${itemById(reward).name})` : 'Crear misión sin botín'}
           </button>
@@ -824,7 +833,7 @@ function Quests({ quests, goals, pendingRedeem, onJoin, onRedeem }) {
           <div key={q.id} className="card">
             {q.image && <img src={q.image} alt={q.sponsor}
               style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 130, objectFit: 'cover' }} />}
-            <h3>{q.title}</h3>
+            <h3>{q.icon && <span>{q.icon} </span>}{q.title}</h3>
             <div className="muted small">Patrocina: {q.sponsor} · {q.freqPerWeek}x/semana · {q.weeks} semanas</div>
             <div className="spacer" />
             <span className="chip">🎁 {q.prize}</span>
@@ -1000,7 +1009,7 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
             <div className="spacer" />
             <button disabled={joined.has(q.id) || busy} onClick={async () => {
               setBusy(true)
-              await db.insertGoal(profile.id, { title: q.title, freqPerWeek: q.freqPerWeek, weeks: q.weeks, questId: q.id })
+              await db.insertGoal(profile.id, { title: q.title, icon: q.icon, freqPerWeek: q.freqPerWeek, weeks: q.weeks, questId: q.id })
               setBusy(false); onNotify('¡Te uniste al reto del grupo!'); onChanged()
             }}>
               {joined.has(q.id) ? 'Ya estás en este reto' : 'Unirme al reto'}

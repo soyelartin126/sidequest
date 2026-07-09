@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import * as db from './supabase.js'
 import { resizePhoto } from './utils.js'
+import { ICONS } from './game.js'
 
 export default function Admin({ quests, profile, banners = [], onBack, onNotify, onChanged }) {
-  const empty = { title: '', sponsor: '', prize: '', freqPerWeek: 3, weeks: 4, image: null }
+  const empty = { title: '', sponsor: '', prize: '', icon: ICONS[0], freqPerWeek: 3, weeks: 4, image: null }
   const [form, setForm] = useState(null)
   const [adminData, setAdminData] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -41,7 +42,7 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
         <div key={q.id} className="card flat">
           <div className="row">
             <div className="grow">
-              <b>{q.title}</b>
+              <b>{q.icon && <span>{q.icon} </span>}{q.title}</b>
               <div className="muted small">{q.sponsor} · 🎁 {q.prize} · {q.freqPerWeek}x/sem · {q.weeks} sem</div>
             </div>
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -64,6 +65,13 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
           <input value={form.sponsor} onChange={e => set('sponsor', e.target.value)} placeholder="Ej: MBIG" />
           <label>Premio</label>
           <input value={form.prize} onChange={e => set('prize', e.target.value)} placeholder="Ej: Shaker + 15% dcto." />
+          <label>Ícono</label>
+          <div className="icon-picker">
+            {ICONS.map(ic => (
+              <button key={ic} type="button" className={'icon-opt' + (form.icon === ic ? ' sel' : '')}
+                onClick={() => set('icon', ic)}>{ic}</button>
+            ))}
+          </div>
           <label>Imagen del reto (logo o foto del premio, opcional)</label>
           <input type="file" accept="image/*" onChange={async e => {
             const f = e.target.files?.[0]

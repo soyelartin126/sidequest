@@ -99,6 +99,13 @@ label { font-size: 13px; font-weight: 700; }
 }
 .hair-opt.sel { border-color: var(--dark); background: #FFE3CC; }
 
+.icon-picker { display: flex; gap: 8px; margin: 6px 0 14px; flex-wrap: wrap; }
+.icon-opt {
+  width: 40px; height: 40px; border: 3px solid transparent; border-radius: 12px;
+  background: #F1F3F5; cursor: pointer; font-size: 18px; line-height: 1;
+}
+.icon-opt.sel { border-color: var(--dark); background: #FFE3CC; }
+
 .nav {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; background: var(--card);
@@ -286,6 +293,7 @@ label { font-size: 13px; font-weight: 700; }
 [data-theme="dark"] .hist { border-bottom-color: #24334F; }
 [data-theme="dark"] .photo-thumb { border-color: #2A3A57; }
 [data-theme="dark"] .hair-opt { background: #223052; }
+[data-theme="dark"] .icon-opt { background: #223052; }
 [data-theme="dark"] .tier-legend { border-top-color: #24334F; }
 [data-theme="dark"] .suggest { border-color: #2A3A57; }
 [data-theme="dark"] .suggest.on { background: #2A2013; }
