@@ -288,6 +288,18 @@ export const ICON_IMAGES = {
   '📚': '/icons/book.png',
   '🏠': '/icons/house.png',
   '🥗': '/icons/salad.png',
+  '🎯': '/icons/target.png',
+  '🏃': '/icons/running.png',
+  '📖': '/icons/open_book.png',
+  '💰': '/icons/money.png',
+  '🧘': '/icons/meditation.png',
+  '💬': '/icons/chat.png',
+  '🔥': '/icons/fire.png',
+  '😴': '/icons/sleep.png',
+  '💧': '/icons/water.png',
+  '✍️': '/icons/writing.png',
+  '🎵': '/icons/music.png',
+  '💼': '/icons/briefcase.png',
 }
 
 // ---- Skills: se suben haciendo check-in en misiones que las tengan asociadas ----

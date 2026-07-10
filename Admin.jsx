@@ -82,7 +82,7 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
           <div className="interests">
             {SKILLS.map(s => (
               <button key={s.id} type="button" className={'interest' + (form.skills.includes(s.id) ? ' on' : '')}
-                onClick={() => toggleSkill(s.id)}>{s.emoji} {s.name}</button>
+                onClick={() => toggleSkill(s.id)}><IconGlyph icon={s.emoji} size={16} /> {s.name}</button>
             ))}
           </div>
           <label>Imagen del reto (logo o foto del premio, opcional)</label>

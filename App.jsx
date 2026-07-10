@@ -91,7 +91,7 @@ function Onboarding({ profile, onFinish }) {
         <p className="muted small">Toca las que quieras empezar. Después puedes editarlas o crear más.</p>
         {ideas.map((d, i) => (
           <div key={i} className={'suggest' + (isPicked(d) ? ' on' : '')} onClick={() => pick(d)}>
-            <span style={{ fontSize: 22 }}>{d.icon}</span>
+            <IconGlyph icon={d.icon} size={22} />
             <div className="grow">
               <b>{d.title}</b>
               <div className="muted small">{d.cat} · {d.freqPerWeek}x/sem · {d.weeks} sem</div>

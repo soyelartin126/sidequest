@@ -31,7 +31,7 @@ export function GoalCard({ g, onClick }) {
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
           {g.skills.map(sid => {
             const s = SKILLS.find(x => x.id === sid)
-            return s && <span key={sid} className="chip">{s.emoji} {s.name}</span>
+            return s && <span key={sid} className="chip"><IconGlyph icon={s.emoji} size={14} /> {s.name}</span>
           })}
         </div>
       )}
@@ -109,7 +109,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
         <div className="interests">
           {allSkills.map(s => (
             <button key={s.id} type="button" className={'interest' + (skills.includes(s.id) ? ' on' : '')}
-              onClick={() => toggleSkill(s.id)}>{s.emoji} {s.name}</button>
+              onClick={() => toggleSkill(s.id)}><IconGlyph icon={s.emoji} size={16} /> {s.name}</button>
           ))}
           <button type="button" className="interest" onClick={() => setAddingSkill(a => !a)}>+ Crear mi skill</button>
         </div>
