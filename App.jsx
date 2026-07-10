@@ -52,7 +52,7 @@ function Onboarding({ profile, onFinish }) {
         <div className="how">
           {how.map(([e, t, d]) => (
             <div key={t} className="how-row">
-              <span className="how-ico">{e}</span>
+              <span className="how-ico"><IconGlyph icon={e} size={22} /></span>
               <div><b>{t}</b><div className="muted small">{d}</div></div>
             </div>
           ))}
@@ -534,7 +534,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingR
 
       <div className="card">
         <div className="row">
-          <span style={{ fontSize: 30 }}>🔥</span>
+          <IconGlyph icon="🔥" size={30} />
           <div className="grow">
             <h3>Racha: {stk} {stk === 1 ? 'día' : 'días'}</h3>
             <div className="dots">
@@ -654,7 +654,7 @@ function Groups({ groups, profile, onOpen, onNotify, onChanged }) {
 
       {groups.map(g => (
         <div key={g.id} className="card row" onClick={() => onOpen(g)} style={{ cursor: 'pointer' }}>
-          <span style={{ fontSize: 26 }}>👥</span>
+          <IconGlyph icon="👥" size={26} />
           <div className="grow">
             <h3>{g.name}</h3>
             <div className="muted small">{g.theme} · {g.members.length} {g.members.length === 1 ? 'miembro' : 'miembros'}</div>
@@ -753,7 +753,7 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
       <div className="card flat">
         {g.members.map(m => (
           <div key={m.id} className="hist">
-            <span style={{ fontSize: 18 }}>👤</span>
+            <IconGlyph icon="👤" size={18} />
             <div className="grow"><b>{m.name}</b></div>
             {m.role === 'admin' && <span className="chip">admin</span>}
           </div>

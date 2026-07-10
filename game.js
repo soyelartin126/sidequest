@@ -300,6 +300,11 @@ export const ICON_IMAGES = {
   '✍️': '/icons/writing.png',
   '🎵': '/icons/music.png',
   '💼': '/icons/briefcase.png',
+  '🎨': '/icons/palette.png',
+  '⚔️': '/icons/swords.png',
+  '🎁': '/icons/gift.png',
+  '👥': '/icons/group.png',
+  '👤': '/icons/profile.png',
 }
 
 // ---- Skills: se suben haciendo check-in en misiones que las tengan asociadas ----
