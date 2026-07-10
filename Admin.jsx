@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import * as db from './supabase.js'
 import { resizePhoto } from './utils.js'
 import { ICONS, SKILLS, MAX_SKILLS_PER_GOAL } from './game.js'
+import { IconGlyph } from './ui.jsx'
 
 export default function Admin({ quests, profile, banners = [], onBack, onNotify, onChanged }) {
   const empty = { title: '', sponsor: '', prize: '', icon: ICONS[0], skills: [], freqPerWeek: 3, weeks: 4, image: null }
@@ -47,7 +48,7 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
         <div key={q.id} className="card flat">
           <div className="row">
             <div className="grow">
-              <b>{q.icon && <span>{q.icon} </span>}{q.title}</b>
+              <b>{q.icon && <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}><IconGlyph icon={q.icon} size={18} /></span>}{q.title}</b>
               <div className="muted small">{q.sponsor} · 🎁 {q.prize} · {q.freqPerWeek}x/sem · {q.weeks} sem</div>
             </div>
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -74,7 +75,7 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
           <div className="icon-picker">
             {ICONS.map(ic => (
               <button key={ic} type="button" className={'icon-opt' + (form.icon === ic ? ' sel' : '')}
-                onClick={() => set('icon', ic)}>{ic}</button>
+                onClick={() => set('icon', ic)}><IconGlyph icon={ic} size={20} /></button>
             ))}
           </div>
           <label>Skills que mejora (hasta {MAX_SKILLS_PER_GOAL})</label>

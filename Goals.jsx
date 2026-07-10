@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ItemSprite } from './Avatar.jsx'
-import { Bar, TierBadge } from './ui.jsx'
+import { Bar, TierBadge, IconGlyph } from './ui.jsx'
 import {
   goalTarget, isPermanent, itemById, canCheckinToday, goalDays, XP_CHECKIN,
   ICONS, SKILLS, MAX_SKILLS_PER_GOAL, tierForDays, DURATIONS, TIERS, eligibleLoot,
@@ -15,7 +15,7 @@ export function GoalCard({ g, onClick }) {
     <div className="card" onClick={onClick} style={{ cursor: 'pointer' }}>
       {g.image && <img src={g.image} alt="" style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 110, objectFit: 'cover' }} />}
       <div className="row">
-        {g.icon && <div className="goal-icon">{g.icon}</div>}
+        {g.icon && <div className="goal-icon"><IconGlyph icon={g.icon} size={32} /></div>}
         <div className="grow">
           <h3>{g.title}</h3>
           {g.sponsor
@@ -102,7 +102,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
         <div className="icon-picker">
           {ICONS.map(ic => (
             <button key={ic} type="button" className={'icon-opt' + (icon === ic ? ' sel' : '')}
-              onClick={() => setIcon(ic)}>{ic}</button>
+              onClick={() => setIcon(ic)}><IconGlyph icon={ic} size={20} /></button>
           ))}
         </div>
         <label>Skills que mejora (hasta {MAX_SKILLS_PER_GOAL})</label>
@@ -122,7 +122,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
             <div className="icon-picker">
               {ICONS.map(ic => (
                 <button key={ic} type="button" className={'icon-opt' + (newSkillIcon === ic ? ' sel' : '')}
-                  onClick={() => setNewSkillIcon(ic)}>{ic}</button>
+                  onClick={() => setNewSkillIcon(ic)}><IconGlyph icon={ic} size={20} /></button>
               ))}
             </div>
             <button disabled={!newSkillName.trim()} onClick={() => {

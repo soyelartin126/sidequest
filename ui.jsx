@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { tierForDays } from './game.js'
+import { tierForDays, ICON_IMAGES } from './game.js'
+
+// muestra la imagen pixel art del icono si existe, si no el emoji tal cual
+export function IconGlyph({ icon, size = 24 }) {
+  const img = ICON_IMAGES[icon]
+  if (img) return <img src={img} alt="" style={{ width: size, height: size, objectFit: 'contain' }} />
+  return <span style={{ fontSize: size, lineHeight: 1 }}>{icon}</span>
+}
 
 export function Bar({ frac }) {
   const total = 16

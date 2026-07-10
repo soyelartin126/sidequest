@@ -129,7 +129,7 @@ export const BACKGROUNDS = [
   { id: 'cielo', name: 'Cielo', minLevel: 1, css: '#EAF1FB', dot: '#D3E3F6' },
   { id: 'atardecer', name: 'Atardecer', minLevel: 3,
     css: 'linear-gradient(160deg,#FFE0C2,#F5A45E)', dot: 'rgba(22,38,63,.06)' },
-  { id: 'bosque', name: 'Bosque', minLevel: 4,
+  { id: 'bosque', name: 'Bosque', minLevel: 1,
     css: 'linear-gradient(160deg,#DDEFE4,#9FCBB0)', dot: 'rgba(22,38,63,.06)',
     image: '/backgrounds/forrest_day.png' },
   { id: 'lago', name: 'Lago', minLevel: 5,
@@ -160,7 +160,8 @@ export function backgroundStyle(bg, dark) {
     backgroundAttachment: 'fixed',
   }
 }
-export const bgById = id => BACKGROUNDS.find(b => b.id === id) || BACKGROUNDS[0]
+export const DEFAULT_BG = 'bosque'
+export const bgById = id => BACKGROUNDS.find(b => b.id === id) || BACKGROUNDS.find(b => b.id === DEFAULT_BG)
 
 // semana actual (Lun-Dom) con estado por dia
 export function weekDots(goals) {
@@ -277,11 +278,18 @@ export function earnedItems(state) {
   return ids
 }
 
-// ---- Iconos elegibles para misiones y retos (emoji por ahora, luego imagenes) ----
+// ---- Iconos elegibles para misiones y retos (emoji por defecto, algunos con imagen pixel art) ----
 export const ICONS = [
   '🎯', '🏃', '🥗', '📚', '📖', '🎨', '💰', '🧘',
   '🏠', '💬', '💪', '🔥', '😴', '💧', '✍️', '🎵',
 ]
+// icono (emoji) -> imagen pixel art que lo reemplaza al mostrarlo, si existe
+export const ICON_IMAGES = {
+  '💪': '/icons/muscle.png',
+  '📚': '/icons/book.png',
+  '🏠': '/icons/house.png',
+  '🥗': '/icons/salad.png',
+}
 
 // ---- Skills: se suben haciendo check-in en misiones que las tengan asociadas ----
 export const SKILLS = [

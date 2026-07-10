@@ -4,7 +4,7 @@ import Avatar, {
   SKINS, HAIRS, SHIRTS, PANTS, SHOES, EYES, HAIR_STYLES, BODY_SHAPES,
 } from './Avatar.jsx'
 import { Bar } from './ui.jsx'
-import { BACKGROUNDS, TIERS, ITEMS, SKILLS, skillLevel, skillStreak } from './game.js'
+import { BACKGROUNDS, DEFAULT_BG, TIERS, ITEMS, SKILLS, skillLevel, skillStreak } from './game.js'
 
 export function SkillCard({ skill, xp, streakDays }) {
   const { level, progress } = skillLevel(xp)
@@ -23,7 +23,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
   const [editing, setEditing] = useState(false)
   const completed = goals.filter(g => g.status === 'completed').length
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
-  const curBg = profile.avatar?.bg || 'niebla'
+  const curBg = profile.avatar?.bg || DEFAULT_BG
   const curCover = profile.avatar?.cover || COVERS[0].id
   const allSkills = [...SKILLS, ...(profile.avatar?.customSkills || [])]
   const Sw = ({ colors, k }) => (

@@ -4,7 +4,7 @@ import * as db from './supabase.js'
 import Admin from './Admin.jsx'
 import Profile from './Profile.jsx'
 import { GoalCard, Goals, NewGoal, GoalDetail } from './Goals.jsx'
-import { Bar, Pwd } from './ui.jsx'
+import { Bar, Pwd, IconGlyph } from './ui.jsx'
 import { resizePhoto } from './utils.js'
 import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
@@ -602,7 +602,7 @@ function Quests({ quests, goals, pendingRedeem, onJoin, onRedeem }) {
           <div key={q.id} className="card">
             {q.image && <img src={q.image} alt={q.sponsor}
               style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 130, objectFit: 'cover' }} />}
-            <h3>{q.icon && <span>{q.icon} </span>}{q.title}</h3>
+            <h3>{q.icon && <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 6 }}><IconGlyph icon={q.icon} size={22} /></span>}{q.title}</h3>
             <div className="muted small">Patrocina: {q.sponsor} · {q.freqPerWeek}x/semana · {q.weeks} semanas</div>
             <div className="spacer" />
             <span className="chip">🎁 {q.prize}</span>
