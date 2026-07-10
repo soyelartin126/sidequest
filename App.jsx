@@ -370,7 +370,7 @@ export default function App() {
           {[['home', '🏠', 'Inicio'], ['goals', '⚔️', 'Misiones'], ['quests', '🎁', 'Premios'],
             ['groups', '👥', 'Grupos'], ['profile', '👤', 'Perfil']].map(([id, ico, label]) => (
             <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>
-              <span className="ico">{ico}</span>{label}
+              <span className="ico"><IconGlyph icon={ico} size={22} /></span>{label}
             </button>
           ))}
         </nav>
