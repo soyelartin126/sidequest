@@ -43,6 +43,13 @@ body {
 .row { display: flex; gap: 12px; align-items: center; }
 .grow { flex: 1; min-width: 0; }
 
+/* fondo tipo chip para que los titulos sueltos (sin tarjeta detras) se lean
+   sobre cualquier fondo ilustrado; cuando ya estan sobre una tarjeta blanca
+   el chip queda del mismo color y no se nota */
+h1, h2 {
+  display: inline-block; background: var(--card);
+  padding: 3px 10px; border-radius: 10px;
+}
 h1 { font-size: 22px; font-weight: 800; letter-spacing: -.4px; margin: 0 0 4px; }
 h2 { font-size: 16px; font-weight: 700; letter-spacing: -.2px; margin: 20px 0 10px; }
 h3 { font-size: 16px; font-weight: 700; margin: 0 0 2px; }

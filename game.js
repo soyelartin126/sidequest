@@ -146,7 +146,7 @@ export function backgroundStyle(bg, dark) {
     return {
       minHeight: '100dvh',
       backgroundImage: `linear-gradient(rgba(10,20,15,.25), rgba(10,20,15,.45)), url(${bg.image})`,
-      backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed',
+      backgroundSize: 'cover', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat',
     }
   }
   const isSolidBg = bg.css.startsWith('#')
@@ -157,7 +157,6 @@ export function backgroundStyle(bg, dark) {
       ? `radial-gradient(${bg.dot} 1.5px, transparent 1.5px)`
       : `radial-gradient(${bg.dot} 1.5px, transparent 1.5px), ${bg.css}`,
     backgroundSize: '26px 26px, 100% 100%',
-    backgroundAttachment: 'fixed',
   }
 }
 export const DEFAULT_BG = 'bosque'

@@ -4,7 +4,7 @@ import * as db from './supabase.js'
 import Admin from './Admin.jsx'
 import Profile from './Profile.jsx'
 import { GoalCard, Goals, NewGoal, GoalDetail } from './Goals.jsx'
-import { Bar, Pwd, IconGlyph } from './ui.jsx'
+import { Bar, Pwd, IconGlyph, Backdrop } from './ui.jsx'
 import { resizePhoto } from './utils.js'
 import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
@@ -215,7 +215,8 @@ export default function App() {
 
   const needsOnb = !onbDone && !profile.avatar?.onboarded && goals.length === 0
   if (needsOnb) return (
-    <div className="app" style={appStyle}>
+    <div className="app">
+      <Backdrop style={appStyle} />
       {toast && <div className="toast">{toast}</div>}
       <Onboarding profile={profile} onFinish={async (interests, chosen) => {
         setOnbDone(true)
@@ -349,7 +350,8 @@ export default function App() {
   }
 
   return (
-    <div className="app" style={appStyle}>
+    <div className="app">
+      <Backdrop style={appStyle} />
       {toast && <div className="toast">{toast}</div>}
       {levelUp && (
         <div className="modal-bg" onClick={() => setLevelUp(null)}>
@@ -408,7 +410,8 @@ function AuthScreen({ onNotify, toast }) {
     if (error) onNotify(error.message)
   }
   return (
-    <div className="app auth-bg" style={backgroundStyle(bgById('bosque'), false)}>
+    <div className="app auth-bg">
+      <Backdrop style={backgroundStyle(bgById('bosque'), false)} />
       {toast && <div className="toast">{toast}</div>}
       <div className="logo">LevelApp</div>
       <div className="tagline">Gamifica tu vida · cumple objetivos · gana premios reales</div>

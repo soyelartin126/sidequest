@@ -8,6 +8,12 @@ export function IconGlyph({ icon, size = 24 }) {
   return <span style={{ fontSize: size, lineHeight: 1 }}>{icon}</span>
 }
 
+// capa de fondo fijada al tamano de la pantalla (no al alto del contenido,
+// que puede ser muy largo) para que la imagen no se vea "estirada"
+export function Backdrop({ style }) {
+  return <div style={{ position: 'fixed', inset: 0, zIndex: -1, ...style }} />
+}
+
 export function Bar({ frac }) {
   const total = 16
   const on = Math.round(Math.min(1, Math.max(0, frac)) * total)
