@@ -3,17 +3,17 @@ import Avatar, {
   Pet, PET_COLORS, CoverThumb, COVERS, ItemSprite,
   SKINS, HAIRS, SHIRTS, PANTS, SHOES, EYES, HAIR_STYLES, BODY_SHAPES,
 } from './Avatar.jsx'
-import { Bar } from './ui.jsx'
+import { Bar, MiniBar, IconGlyph } from './ui.jsx'
 import { BACKGROUNDS, DEFAULT_BG, TIERS, ITEMS, SKILLS, skillLevel, skillStreak } from './game.js'
 
 export function SkillCard({ skill, xp, streakDays }) {
   const { level, progress } = skillLevel(xp)
   return (
     <div className="skill-card">
-      <div className="skill-ico">{skill.emoji}</div>
+      <div className="skill-ico"><IconGlyph icon={skill.emoji} size={34} /></div>
       <b>{skill.name}</b>
       <div className="muted small">Nivel {level}</div>
-      <Bar frac={progress} />
+      <MiniBar frac={progress} />
       {streakDays > 0 && <div className="skill-streak">🔥 {streakDays} días</div>}
     </div>
   )

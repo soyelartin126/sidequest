@@ -68,6 +68,9 @@ h3 { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
 .bar span { width: 12px; border-radius: 999px; flex-shrink: 0; }
 .bar span.on { background: var(--prim); }
 
+.mini-bar { height: 8px; border-radius: 999px; background: #EAEDF1; overflow: hidden; }
+.mini-bar-fill { height: 100%; border-radius: 999px; background: var(--prim); }
+
 .dots { display: flex; gap: 7px; margin-top: 8px; }
 .dot { width: 28px; height: 28px; border: var(--border); border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
@@ -134,7 +137,7 @@ label { font-size: 13px; font-weight: 700; }
   padding: 14px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .skill-ico { font-size: 34px; line-height: 1; margin-bottom: 2px; }
-.skill-card .bar { margin: 4px 0 2px; }
+.skill-card .mini-bar { width: 100%; margin: 4px 0 2px; }
 .skill-streak { font-size: 12px; font-weight: 700; color: var(--prim); margin-top: 2px; }
 
 .nav {
@@ -315,6 +318,7 @@ label { font-size: 13px; font-weight: 700; }
 }
 [data-theme="dark"] body { background-image: radial-gradient(#1B2942 1.5px, transparent 1.5px); }
 [data-theme="dark"] .bar { background: #223052; }
+[data-theme="dark"] .mini-bar { background: #223052; }
 [data-theme="dark"] input,
 [data-theme="dark"] select,
 [data-theme="dark"] textarea { background: #101c30; border-color: #2A3A57; color: var(--dark); }

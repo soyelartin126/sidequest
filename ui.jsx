@@ -24,6 +24,17 @@ export function Bar({ frac }) {
   )
 }
 
+// barra de relleno continuo (en % del ancho) para espacios angostos como
+// tarjetas en grilla, donde los 16 segmentos de ancho fijo de Bar no caben
+export function MiniBar({ frac }) {
+  const pct = Math.round(Math.min(1, Math.max(0, frac)) * 100)
+  return (
+    <div className="mini-bar">
+      <div className="mini-bar-fill" style={{ width: `${pct}%` }} />
+    </div>
+  )
+}
+
 export function TierBadge({ weeks }) {
   const tier = tierForDays(Math.round(weeks * 7))
   return <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
