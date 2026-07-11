@@ -121,46 +121,22 @@ export const addShield = avatar => ({
   ...avatar, shields: Math.min(SHIELD_CAP, (avatar.shields ?? 1) + 1),
 })
 
-// ---- Fondos de la app ----
-// 3 gratis + desbloqueables por nivel. Se guarda en avatar.bg (id).
-export const BACKGROUNDS = [
-  { id: 'niebla', name: 'Niebla', minLevel: 1, css: '#F4F5F7', dot: '#E2E6EA' },
-  { id: 'arena', name: 'Arena', minLevel: 1, css: '#FBF3E9', dot: '#EBD9C4' },
-  { id: 'cielo', name: 'Cielo', minLevel: 1, css: '#EAF1FB', dot: '#D3E3F6' },
-  { id: 'atardecer', name: 'Atardecer', minLevel: 3,
-    css: 'linear-gradient(160deg,#FFE0C2,#F5A45E)', dot: 'rgba(22,38,63,.06)' },
-  { id: 'bosque', name: 'Bosque', minLevel: 1,
-    css: 'linear-gradient(160deg,#DDEFE4,#9FCBB0)', dot: 'rgba(22,38,63,.06)',
-    image: '/backgrounds/forrest_day.png' },
-  { id: 'lago', name: 'Lago', minLevel: 5,
-    css: 'linear-gradient(160deg,#DDECFB,#8FBEE8)', dot: 'rgba(22,38,63,.06)' },
-  { id: 'medianoche', name: 'Medianoche', minLevel: 6,
-    css: 'linear-gradient(160deg,#1C2B45,#16263F)', dot: 'rgba(255,255,255,.08)' },
-]
+// ---- Fondo de la app ----
+// Sigue el modo claro/oscuro del usuario, no es elegible por separado.
+export const BG_DAY = '/backgrounds/forrest_day.png'
+export const BG_NIGHT = '/backgrounds/forrest_night.png'
 
-// estilo de fondo de pantalla completa: imagen ilustrada si el fondo trae una,
-// si no el patron de puntitos sobre color/gradiente de siempre
-export function backgroundStyle(bg, dark) {
-  if (dark) return { minHeight: '100dvh' }
-  if (bg.image) {
-    return {
-      minHeight: '100dvh',
-      backgroundImage: `linear-gradient(rgba(10,20,15,.25), rgba(10,20,15,.45)), url(${bg.image})`,
-      backgroundSize: 'cover', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat',
-    }
-  }
-  const isSolidBg = bg.css.startsWith('#')
+export function backgroundStyle(dark) {
+  const image = dark ? BG_NIGHT : BG_DAY
+  const overlay = dark
+    ? 'linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.5))'
+    : 'linear-gradient(rgba(10,20,15,.25), rgba(10,20,15,.45))'
   return {
     minHeight: '100dvh',
-    backgroundColor: isSolidBg ? bg.css : undefined,
-    backgroundImage: isSolidBg
-      ? `radial-gradient(${bg.dot} 1.5px, transparent 1.5px)`
-      : `radial-gradient(${bg.dot} 1.5px, transparent 1.5px), ${bg.css}`,
-    backgroundSize: '26px 26px, 100% 100%',
+    backgroundImage: `${overlay}, url(${image})`,
+    backgroundSize: 'cover', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat',
   }
 }
-export const DEFAULT_BG = 'bosque'
-export const bgById = id => BACKGROUNDS.find(b => b.id === id) || BACKGROUNDS.find(b => b.id === DEFAULT_BG)
 
 // semana actual (Lun-Dom) con estado por dia
 export function weekDots(goals) {

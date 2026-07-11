@@ -25,6 +25,7 @@ body {
 /* login con fondo ilustrado: texto/tarjeta legibles sobre la imagen */
 .auth-bg .logo, .auth-bg .tagline { color: #fff; }
 .auth-bg .card { background: rgba(255, 255, 255, .94); }
+[data-theme="dark"] .auth-bg .card { background: rgba(23, 36, 64, .92); }
 
 .logo {
   font-family: 'Inter Tight', 'Segoe UI', sans-serif;

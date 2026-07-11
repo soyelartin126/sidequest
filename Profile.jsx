@@ -4,7 +4,7 @@ import Avatar, {
   SKINS, HAIRS, SHIRTS, PANTS, SHOES, EYES, HAIR_STYLES, BODY_SHAPES,
 } from './Avatar.jsx'
 import { Bar, MiniBar, IconGlyph } from './ui.jsx'
-import { BACKGROUNDS, DEFAULT_BG, TIERS, ITEMS, SKILLS, skillLevel, skillStreak } from './game.js'
+import { TIERS, ITEMS, SKILLS, skillLevel, skillStreak } from './game.js'
 
 export function SkillCard({ skill, xp, streakDays }) {
   const { level, progress } = skillLevel(xp)
@@ -23,7 +23,6 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
   const [editing, setEditing] = useState(false)
   const completed = goals.filter(g => g.status === 'completed').length
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
-  const curBg = profile.avatar?.bg || DEFAULT_BG
   const curCover = profile.avatar?.cover || COVERS[0].id
   const allSkills = [...SKILLS, ...(profile.avatar?.customSkills || [])]
   const Sw = ({ colors, k }) => (
@@ -121,25 +120,6 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
               <div className="bg-nm">{b.name || 'Banner'}</div>
             </div>
           ))}
-        </div>
-      </div>
-
-      <h2>Fondo de la app</h2>
-      <div className="card">
-        <p className="muted small">3 gratis para todos. Los demás se desbloquean subiendo de nivel.</p>
-        <div className="bgs">
-          {BACKGROUNDS.map(b => {
-            const locked = lvl.level < b.minLevel
-            return (
-              <div key={b.id} className={'bg-opt' + (curBg === b.id ? ' sel' : '') + (locked ? ' locked' : '')}
-                onClick={() => !locked && onAvatar({ ...profile.avatar, bg: b.id })}>
-                <div className="bg-swatch" style={b.image
-                  ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : { background: b.css }} />
-                <div className="bg-nm">{locked ? `🔒 Nv ${b.minLevel}` : b.name}</div>
-              </div>
-            )
-          })}
         </div>
       </div>
 

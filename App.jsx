@@ -10,7 +10,7 @@ import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
   makeRedeemCode, ITEMS, earnedItems, itemById, isPermanent,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
-  applyShields, addShield, SHIELD_CAP, bgById, backgroundStyle, INTERESTS,
+  applyShields, addShield, SHIELD_CAP, backgroundStyle, INTERESTS,
   COIN_CHECKIN, COIN_GOAL, COIN_QUEST, WELCOME_COINS, itemPrice, COVER_PRICE,
   SKILL_XP_PER_CHECKIN, SKILL_STREAK_MILESTONE, SKILL_STREAK_BONUS_COINS, skillStreak, SKILLS,
 } from './game.js'
@@ -147,7 +147,7 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const toastTimer = useRef()
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('sq-theme') || 'light' } catch { return 'light' }
+    try { return localStorage.getItem('sq-theme') || 'dark' } catch { return 'dark' }
   })
   const [onbDone, setOnbDone] = useState(false)
   const [recovery, setRecovery] = useState(false)
@@ -201,7 +201,7 @@ export default function App() {
   if (recovery) return <ResetPassword toast={toast} onNotify={notify}
     onDone={() => { setRecovery(false); notify('Contraseña actualizada'); }} />
   if (session === undefined) return <div className="app center"><div className="logo">LevelApp</div><p className="muted">Cargando…</p></div>
-  if (!session) return <AuthScreen onNotify={notify} toast={toast} />
+  if (!session) return <AuthScreen onNotify={notify} toast={toast} theme={theme} />
   if (!data) return <div className="app center"><div className="logo">LevelApp</div><p className="muted">Cargando tu aventura…</p></div>
 
   const { profile, goals, quests, groups, banners = [] } = data
@@ -210,8 +210,7 @@ export default function App() {
   const earned = earnedItems(data)
   const pendingRedeem = goals.filter(g => g.redeemCode && !g.redeemed)
   const mood = moodOf(goals, stk, profile.bestStreak)
-  const bg = bgById(profile.avatar?.bg)
-  const appStyle = backgroundStyle(bg, theme === 'dark')
+  const appStyle = backgroundStyle(theme === 'dark')
 
   const needsOnb = !onbDone && !profile.avatar?.onboarded && goals.length === 0
   if (needsOnb) return (
@@ -380,7 +379,7 @@ export default function App() {
 }
 
 // ---------- Auth: login + registro con personaje ----------
-function AuthScreen({ onNotify, toast }) {
+function AuthScreen({ onNotify, toast, theme }) {
   const [mode, setMode] = useState('login') // login | signup | signup2
   const [form, setForm] = useState({ email: '', password: '', name: '', phone: '' })
   const [avatar, setAvatar] = useState({ skin: SKINS[0], hair: HAIRS[0], shirt: SHIRTS[0] })
@@ -411,7 +410,7 @@ function AuthScreen({ onNotify, toast }) {
   }
   return (
     <div className="app auth-bg">
-      <Backdrop style={backgroundStyle(bgById('bosque'), false)} />
+      <Backdrop style={backgroundStyle(theme === 'dark')} />
       {toast && <div className="toast">{toast}</div>}
       <div className="logo">LevelApp</div>
       <div className="tagline">Gamifica tu vida · cumple objetivos · gana premios reales</div>
