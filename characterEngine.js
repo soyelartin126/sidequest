@@ -48,6 +48,25 @@ export const GENDERS = [
   { id: 'f', name: 'Femenino' },
 ]
 
+// items equipables (tienda/logros) -> capa de imagen LPC mas parecida.
+// slot debe calzar con item.slot en game.js (ITEMS)
+const ITEM_LAYERS = {
+  gorra: { slot: 'head', file: 'gorra' },
+  bandana: { slot: 'head', file: 'bandana' },
+  gorro_hongo: { slot: 'head', file: 'gorro_hongo' },
+  casco: { slot: 'head', file: 'casco' },
+  corona: { slot: 'head', file: 'corona' },
+  lentes: { slot: 'face', file: 'lentes' },
+  espada: { slot: 'hand', file: 'espada' },
+  espada_fuego: { slot: 'hand', file: 'espada_fuego' },
+  escudo: { slot: 'hand', file: 'escudo' },
+  medalla: { slot: 'chest', file: 'medalla', gendered: true },
+  botas: { slot: 'feet', file: 'botas' },
+  capa: { slot: 'back', bgFile: 'capa_bg', fgFile: 'capa_fg' },
+  capa_azul: { slot: 'back', bgFile: 'capa_azul_bg', fgFile: 'capa_azul_fg' },
+  alas: { slot: 'back', bgFile: 'alas_bg', fgFile: 'alas_fg' },
+}
+
 const hexToRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
 
 const imageCache = new Map()
@@ -98,30 +117,47 @@ async function drawPlain(ctx, src) {
 }
 
 const renderCache = new Map()
+const I = '/character/items'
 
 // dibuja el personaje en un canvas 64x64 y devuelve un data URL (con cache)
-export async function renderCharacter({ gender = 'm', skin = 'light', hairStyle = 'none', hairColor = 'dark_brown' }) {
+export async function renderCharacter({
+  gender = 'm', skin = 'light', hairStyle = 'none', hairColor = 'dark_brown', equipped = {},
+}) {
   const g = gender === 'f' ? 'f' : 'm'
-  const key = `${g}|${skin}|${hairStyle}|${hairColor}`
+  const eq = ['head', 'chest', 'face', 'hand', 'back', 'feet']
+    .map(slot => equipped[slot]).filter(id => id && ITEM_LAYERS[id])
+  const key = `${g}|${skin}|${hairStyle}|${hairColor}|${eq.join(',')}`
   if (renderCache.has(key)) return renderCache.get(key)
 
   const skinRamp = (SKIN_TONES.find(s => s.id === skin) || SKIN_TONES[0]).ramp
   const hairRamp = (HAIR_COLORS.find(h => h.id === hairColor) || HAIR_COLORS[0]).ramp
+  const back = ITEM_LAYERS[equipped.back]
+  const feetItem = ITEM_LAYERS[equipped.feet]
+  const chestItem = ITEM_LAYERS[equipped.chest]
+  const handItem = ITEM_LAYERS[equipped.hand]
+  const headItem = ITEM_LAYERS[equipped.head]
+  const faceItem = ITEM_LAYERS[equipped.face]
 
   const canvas = document.createElement('canvas')
   canvas.width = 64; canvas.height = 64
   const ctx = canvas.getContext('2d')
   const T = '/character/templates'
 
+  if (back?.bgFile) await drawPlain(ctx, `${I}/${back.bgFile}.png`)
   await drawRecolored(ctx, `${T}/body_${g}.png`, SKIN_TEMPLATE, skinRamp)
   await drawPlain(ctx, `${T}/legs_${g}.png`)
-  await drawPlain(ctx, `${T}/feet_${g}.png`)
+  await drawPlain(ctx, feetItem ? `${I}/${feetItem.file}.png` : `${T}/feet_${g}.png`)
   await drawPlain(ctx, `${T}/torso_${g}.png`)
   await drawRecolored(ctx, `${T}/head_${g}.png`, SKIN_TEMPLATE, skinRamp)
   await drawPlain(ctx, `${T}/eyes_${g}.png`)
   if (hairStyle && hairStyle !== 'none') {
     await drawRecolored(ctx, `${T}/hair_${hairStyle}.png`, HAIR_TEMPLATE, hairRamp)
   }
+  if (chestItem) await drawPlain(ctx, `${I}/${chestItem.file}_${g}.png`)
+  if (handItem) await drawPlain(ctx, `${I}/${handItem.file}.png`)
+  if (headItem) await drawPlain(ctx, `${I}/${headItem.file}.png`)
+  if (faceItem) await drawPlain(ctx, `${I}/${faceItem.file}.png`)
+  if (back?.fgFile) await drawPlain(ctx, `${I}/${back.fgFile}.png`)
 
   const url = canvas.toDataURL()
   renderCache.set(key, url)

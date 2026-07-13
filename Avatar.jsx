@@ -55,14 +55,16 @@ const OVERLAYS = {
     ...px(16, 13, '#2E7D32'), ...px(11, 13, '#F4511E')],
 }
 
-export default function Avatar({ avatar, size = 120 }) {
+export default function Avatar({ avatar, equipped = {}, size = 120 }) {
   const { gender = 'm', skin = 'light', hairStyle = 'none', hairColor = 'dark_brown' } = avatar || {}
   const [src, setSrc] = useState(null)
+  const eqKey = JSON.stringify(equipped)
   useEffect(() => {
     let alive = true
-    renderCharacter({ gender, skin, hairStyle, hairColor }).then(url => { if (alive) setSrc(url) })
+    renderCharacter({ gender, skin, hairStyle, hairColor, equipped }).then(url => { if (alive) setSrc(url) })
     return () => { alive = false }
-  }, [gender, skin, hairStyle, hairColor])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gender, skin, hairStyle, hairColor, eqKey])
   const h = size * 19 / 14
   return (
     <div style={{ width: size, height: h, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}

@@ -46,7 +46,7 @@ function Onboarding({ profile, onFinish }) {
     <>
       <div className="logo">LevelApp</div>
       <div className="card center">
-        <Avatar avatar={profile.avatar} size={92} />
+        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={92} />
         <h1>¡Hola, {profile.name}!</h1>
         <p className="muted">Así funciona LevelApp</p>
         <div className="how">
@@ -301,6 +301,7 @@ export default function App() {
         await db.saveProfile({ ...profile, equipped: eq }); refresh()
       }}
       onAdmin={() => setView({ name: 'admin' })}
+      onCredits={() => setView({ name: 'credits' })}
       onLogout={() => db.signOut()} />,
   }
 
@@ -334,6 +335,8 @@ export default function App() {
   } else if (view?.name === 'admin') {
     overlay = <Admin quests={quests.filter(q => !q.groupId)} profile={profile} banners={banners}
       onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
+  } else if (view?.name === 'credits') {
+    overlay = <Credits onBack={() => setView(null)} />
   } else if (view?.name === 'store') {
     overlay = <Store profile={profile} lvl={lvl} earned={earned} banners={banners} onBack={() => setView(null)}
       onBuy={async (kind, id, price) => {
@@ -524,7 +527,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingR
       <Cover id={coverById(profile.avatar?.cover).id} image={coverBanner?.image} greeting={`Hola, ${profile.name}`} sub="Gamifica tu vida" />
 
       <div className="card row lift">
-        <Avatar avatar={profile.avatar} size={84} />
+        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} />
         <div className="grow">
           <h1>{profile.name}</h1>
           <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
@@ -644,6 +647,34 @@ function Redeem({ goal: g, onBack }) {
         {g.redeemed
           ? <span className="chip ok">Canjeado ✔</span>
           : <p className="muted small">El local lo valida y lo marca como usado.</p>}
+      </div>
+    </>
+  )
+}
+
+function Credits({ onBack }) {
+  return (
+    <>
+      <div className="topbar">
+        <button className="sec mini" onClick={onBack}>← Volver</button>
+        <h1>Créditos</h1>
+      </div>
+      <div className="card">
+        <p className="muted small">
+          Los personajes de LevelApp usan arte pixel de{' '}
+          <a href="https://lpc.opengameart.org/" target="_blank" rel="noreferrer">Liberated Pixel Cup</a>{' '}
+          (LPC), un proyecto de arte abierto creado por decenas de artistas de la comunidad.
+        </p>
+        <p className="muted small">
+          Licenciado bajo{' '}
+          <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noreferrer">CC BY-SA 3.0</a>{' '}
+          y{' '}
+          <a href="https://static.opengameart.org/OGA-BY-3.0.txt" target="_blank" rel="noreferrer">OGA-BY 3.0</a>.
+        </p>
+        <p className="muted small">
+          A medida que LevelApp crezca, reemplazaremos estos assets por ilustraciones propias
+          encargadas a un artista.
+        </p>
       </div>
     </>
   )

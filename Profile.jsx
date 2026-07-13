@@ -19,7 +19,7 @@ export function SkillCard({ skill, xp, streakDays }) {
   )
 }
 
-function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onLogout }) {
+function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onCredits, onLogout }) {
   const [editing, setEditing] = useState(false)
   const completed = goals.filter(g => g.status === 'completed').length
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
@@ -46,7 +46,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
     <>
       <div className="card center">
         <div className="row" style={{ justifyContent: 'center' }}>
-          <Avatar avatar={profile.avatar} size={120} />
+          <Avatar avatar={profile.avatar} equipped={profile.equipped} size={120} />
           <Pet color={petColor} size={70} mood={mood} name="Pixi" />
         </div>
         <h1>{profile.name}</h1>
@@ -199,6 +199,9 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
         <button className="sec" onClick={onLogout}>Cerrar sesión</button>
       </div>
       <p className="muted small center">LevelApp v0.3 · sincronizado en la nube ☁️</p>
+      <p className="muted small center">
+        <button className="link-btn" onClick={onCredits}>Créditos del arte de personajes</button>
+      </p>
     </>
   )
 }
