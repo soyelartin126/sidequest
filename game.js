@@ -192,10 +192,10 @@ export const ITEMS = [
   { id: 'medalla', name: 'Medalla patrocinada', slot: 'chest', kind: 'logro', desc: 'Primer reto patrocinado completado.' },
   { id: 'trofeo', name: 'Trofeo dorado', slot: 'side', kind: 'logro', desc: '3 misiones completadas.' },
   // ---- FACIL (1-3 dias) ----
-  { id: 'bandana', name: 'Bandana roja', slot: 'head', kind: 'loot', tier: 'facil', reqCheckins: 2, desc: 'Para partir con estilo.' },
-  { id: 'gorro_hongo', name: 'Gorro hongo', slot: 'head', kind: 'loot', tier: 'facil', reqCheckins: 3, desc: 'Un clásico de los pixeles.' },
+  { id: 'bandana', name: 'Bandana', slot: 'head', kind: 'loot', tier: 'facil', reqCheckins: 2, desc: 'Para partir con estilo.' },
+  { id: 'gorro_hongo', name: 'Sombrero de explorador', slot: 'head', kind: 'loot', tier: 'facil', reqCheckins: 3, desc: 'Un clásico de los pixeles.' },
   { id: 'pocion', name: 'Poción de ánimo', slot: 'side', kind: 'loot', tier: 'facil', reqCheckins: 2, desc: '+10 motivación (efecto visual).' },
-  { id: 'lentes', name: 'Lentes retro', slot: 'face', kind: 'loot', tier: 'facil', reqCheckins: 3, desc: 'Nadie te reconoce en el gym.' },
+  { id: 'lentes', name: 'Lentes de sol', slot: 'face', kind: 'loot', tier: 'facil', reqCheckins: 3, desc: 'Nadie te reconoce en el gym.' },
   // ---- MEDIO (4-14 dias) ----
   { id: 'escudo', name: 'Escudo de madera', slot: 'hand', kind: 'loot', tier: 'medio', reqCheckins: 6, desc: 'Bloquea excusas.' },
   { id: 'capa_azul', name: 'Capa azul', slot: 'back', kind: 'loot', tier: 'medio', reqCheckins: 9, desc: 'Los héroes parten por algo.' },
@@ -205,7 +205,7 @@ export const ITEMS = [
   { id: 'espada', name: 'Espada pixel', slot: 'hand', kind: 'loot', tier: 'dificil', reqCheckins: 14, desc: 'El arma del constante.' },
   { id: 'espada_fuego', name: 'Espada de fuego', slot: 'hand', kind: 'loot', tier: 'dificil', reqCheckins: 20, desc: 'Forjada en 20 check-ins.' },
   { id: 'casco', name: 'Casco de caballero', slot: 'head', kind: 'loot', tier: 'dificil', reqCheckins: 24, desc: 'Disciplina de acero.' },
-  { id: 'capa', name: 'Capa morada', slot: 'back', kind: 'loot', tier: 'dificil', reqCheckins: 16, desc: 'Del club de los que no fallan.' },
+  { id: 'capa', name: 'Capa de viajero', slot: 'back', kind: 'loot', tier: 'dificil', reqCheckins: 16, desc: 'Del club de los que no fallan.' },
   { id: 'buho', name: 'Búho sabio', slot: 'pet', kind: 'loot', tier: 'dificil', reqCheckins: 18, desc: 'Sabe que vas a llegar.' },
   // ---- LEGENDARIO (30+ dias) ----
   { id: 'alas', name: 'Alas pixel', slot: 'back', kind: 'loot', tier: 'legendario', reqCheckins: 31, desc: 'Un mes entero. Vuelas.' },

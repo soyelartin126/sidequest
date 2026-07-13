@@ -113,7 +113,21 @@ export function Pet({ color = PET_COLORS[0], size = 64, mood = 'happy', name }) 
 }
 
 // mini-sprite: dibuja las celdas del overlay del item, normalizadas
+// items con pieza LPC real (ver characterEngine.js) -> imagen de icono
+const ITEM_ICONS = {
+  gorra: 'gorra', bandana: 'bandana', gorro_hongo: 'gorro_hongo', casco: 'casco', corona: 'corona',
+  lentes: 'lentes', espada: 'espada', espada_fuego: 'espada_fuego', escudo: 'escudo',
+  medalla: 'medalla_m', botas: 'botas', capa: 'capa_bg', capa_azul: 'capa_azul_bg', alas: 'alas_fg',
+}
+
 export function ItemSprite({ id, size = 44 }) {
+  const icon = ITEM_ICONS[id]
+  if (icon) {
+    return (
+      <img src={`/character/items/${icon}.png`} alt="" width={size} height={size}
+        style={{ imageRendering: 'pixelated', objectFit: 'contain' }} />
+    )
+  }
   const ov = OVERLAYS[id]
   if (!ov) return null
   const ys = ov.map(c => c[0]), xs = ov.map(c => c[1])
