@@ -53,12 +53,13 @@ export async function signUp({ email, password, name, phone, avatar }) {
 
 // ---------- carga de estado ----------
 export async function fetchState(userId) {
-  const [p, g, q, gm, si] = await Promise.all([
+  const [p, g, q, gm, si, mb] = await Promise.all([
     sb.from('profiles').select('*').eq('id', userId).single(),
     sb.from('goals').select('*, checkins(*)').eq('user_id', userId).order('created_at'),
     sb.from('quests').select('*').order('created_at'),
     sb.from('group_members').select('role, groups(*, businesses(id, name, logo_url))').eq('user_id', userId),
     sb.from('store_items').select('*').eq('active', true).order('created_at'),
+    sb.from('businesses').select('id, name, logo_url').eq('owner_id', userId),
   ])
   if (p.error) return { error: p.error }
   const groups = []
@@ -85,6 +86,7 @@ export async function fetchState(userId) {
     banners: (si.data || []).filter(r => r.kind === 'banner').map(r => ({
       id: r.id, name: r.name, image: r.image_url, price: r.price,
     })),
+    myBusinesses: (mb.data || []).map(b => ({ id: b.id, name: b.name, logo: b.logo_url })),
   }
 }
 
@@ -159,6 +161,17 @@ export async function joinGroup(userId, code) {
   if (error) return { error }
   return { groupId: data }
 }
+
+// ---------- panel de empresa (self-serve) ----------
+export async function createBusiness(userId, name, contactEmail) {
+  return sb.from('businesses').insert({ name, owner_id: userId, contact_email: contactEmail }).select().single()
+}
+
+export const updateBusinessLogo = (businessId, logoUrl) =>
+  sb.from('businesses').update({ logo_url: logoUrl }).eq('id', businessId)
+
+export const createBusinessGroup = (businessId, name, theme) =>
+  sb.rpc('create_business_group', { p_business_id: businessId, p_name: name, p_theme: theme })
 
 // ---------- equipo autorizado de un grupo-empresa ----------
 export const fetchCompanyInvites = groupId => sb.from('company_invites')

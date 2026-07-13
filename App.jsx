@@ -3,6 +3,7 @@ import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVE
 import * as db from './supabase.js'
 import Admin from './Admin.jsx'
 import Profile from './Profile.jsx'
+import BusinessHome from './BusinessHome.jsx'
 import { GoalCard, Goals, NewGoal, GoalDetail } from './Goals.jsx'
 import { Bar, Pwd, IconGlyph, Backdrop, CompanyBadge } from './ui.jsx'
 import { resizePhoto } from './utils.js'
@@ -204,7 +205,7 @@ export default function App() {
   if (!session) return <AuthScreen onNotify={notify} toast={toast} theme={theme} />
   if (!data) return <div className="app center"><div className="logo">LevelApp</div><p className="muted">Cargando tu aventura…</p></div>
 
-  const { profile, goals, quests, groups, banners = [] } = data
+  const { profile, goals, quests, groups, banners = [], myBusinesses = [] } = data
   const lvl = levelFor(profile.xp)
   const stk = streak(goals, profile.avatar?.frozenDays || [])
   const earned = earnedItems(data)
@@ -304,6 +305,9 @@ export default function App() {
       onAdmin={() => setView({ name: 'admin' })}
       onCredits={() => setView({ name: 'credits' })}
       onLogout={() => db.signOut()} />,
+    empresa: <BusinessHome businesses={myBusinesses} groups={groups} onNotify={notify}
+      onOpenGroup={g => setView({ name: 'group', id: g.id })}
+      onChanged={() => refresh()} />,
   }
 
   let overlay = null
@@ -371,7 +375,9 @@ export default function App() {
       {!overlay && (
         <nav className="nav">
           {[['home', '🏠', 'Inicio'], ['goals', '⚔️', 'Misiones'], ['quests', '🎁', 'Premios'],
-            ['groups', '👥', 'Grupos'], ['profile', '👤', 'Perfil']].map(([id, ico, label]) => (
+            ['groups', '👥', 'Grupos'],
+            ...(myBusinesses.length > 0 ? [['empresa', '🏢', 'Empresa']] : []),
+            ['profile', '👤', 'Perfil']].map(([id, ico, label]) => (
             <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>
               <span className="ico"><IconGlyph icon={ico} size={28} /></span>{label}
             </button>
@@ -384,8 +390,9 @@ export default function App() {
 
 // ---------- Auth: login + registro con personaje ----------
 function AuthScreen({ onNotify, toast, theme }) {
-  const [mode, setMode] = useState('login') // login | signup | signup2
-  const [form, setForm] = useState({ email: '', password: '', name: '', phone: '' })
+  const [mode, setMode] = useState('login') // login | signup | signup2 | business_signup
+  const [isBusiness, setIsBusiness] = useState(false)
+  const [form, setForm] = useState({ email: '', password: '', name: '', phone: '', bizName: '', teamName: '' })
   const [avatar, setAvatar] = useState({ gender: 'm', skin: SKIN_TONES[0].id, hairStyle: 'none', hairColor: HAIR_COLORS[0].id })
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -413,6 +420,19 @@ function AuthScreen({ onNotify, toast, theme }) {
     setBusy(false)
     if (error) onNotify(error.message)
   }
+  const submitBusinessSignup = async () => {
+    setBusy(true)
+    const email = form.email.trim()
+    const { user, error } = await db.signUp({
+      email, password: form.password, name: form.name.trim(), phone: form.phone.trim(), avatar,
+    })
+    if (error) { setBusy(false); onNotify(error.message); return }
+    const { data: biz, error: e2 } = await db.createBusiness(user.id, form.bizName.trim(), email)
+    if (e2) { setBusy(false); onNotify('Cuenta creada, pero la empresa falló: ' + e2.message); return }
+    const { error: e3 } = await db.createBusinessGroup(biz.id, form.teamName.trim() || 'Equipo principal', THEMES[1])
+    setBusy(false)
+    if (e3) onNotify('Empresa creada, pero el equipo falló: ' + e3.message)
+  }
   return (
     <div className="app auth-bg">
       <Backdrop style={backgroundStyle(theme === 'dark')} />
@@ -433,6 +453,9 @@ function AuthScreen({ onNotify, toast, theme }) {
           <div className="spacer" />
           <button className="sec" onClick={() => setMode('signup')}>Crear cuenta nueva</button>
           <button className="link-btn" onClick={() => setMode('forgot')}>¿Olvidaste tu contraseña?</button>
+          <button className="link-btn" onClick={() => { setIsBusiness(true); setMode('business_signup') }}>
+            ¿Tienes una empresa? Regístrate aquí
+          </button>
         </div>
       )}
 
@@ -466,6 +489,31 @@ function AuthScreen({ onNotify, toast, theme }) {
           <label>Contraseña (mínimo 6 caracteres)</label>
           <Pwd value={form.password} onChange={e => set('password', e.target.value)} />
           <button disabled={!form.name.trim() || !form.email.includes('@') || form.password.length < 6}
+            onClick={() => { setIsBusiness(false); setMode('signup2') }}>
+            Siguiente: tu personaje →
+          </button>
+          <div className="spacer" />
+          <button className="sec" onClick={() => setMode('login')}>Ya tengo cuenta</button>
+        </div>
+      )}
+
+      {mode === 'business_signup' && (
+        <div className="card">
+          <h1>Registra tu empresa</h1>
+          <p className="muted small">Crea tu cuenta, tu primer equipo, y empieza a invitar a tu gente.</p>
+          <label>Nombre de tu empresa</label>
+          <input value={form.bizName} onChange={e => set('bizName', e.target.value)} placeholder="Ej: Panadería Ortega" maxLength={40} />
+          <label>Nombre de tu primer equipo</label>
+          <input value={form.teamName} onChange={e => set('teamName', e.target.value)} placeholder="Ej: Equipo principal" maxLength={30} />
+          <label>Tu nombre</label>
+          <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ej: Martín" maxLength={20} />
+          <label>Correo</label>
+          <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="tu@correo.com" />
+          <label>Teléfono (opcional)</label>
+          <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+56 9 …" />
+          <label>Contraseña (mínimo 6 caracteres)</label>
+          <Pwd value={form.password} onChange={e => set('password', e.target.value)} />
+          <button disabled={!form.bizName.trim() || !form.name.trim() || !form.email.includes('@') || form.password.length < 6}
             onClick={() => setMode('signup2')}>
             Siguiente: tu personaje →
           </button>
@@ -503,11 +551,11 @@ function AuthScreen({ onNotify, toast, theme }) {
               ))}
             </div>
             <label>Color de pelo</label><RampSw options={HAIR_COLORS} k="hairColor" />
-            <button disabled={busy} onClick={submitSignup}>
+            <button disabled={busy} onClick={isBusiness ? submitBusinessSignup : submitSignup}>
               {busy ? 'Creando cuenta…' : '¡Comenzar la aventura!'}
             </button>
             <div className="spacer" />
-            <button className="sec" onClick={() => setMode('signup')}>← Volver</button>
+            <button className="sec" onClick={() => setMode(isBusiness ? 'business_signup' : 'signup')}>← Volver</button>
           </div>
         </>
       )}
