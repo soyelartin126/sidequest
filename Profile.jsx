@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Avatar, {
   Pet, PET_COLORS, CoverThumb, COVERS, ItemSprite,
-  SKINS, HAIRS, SHIRTS, PANTS, SHOES, EYES, HAIR_STYLES, BODY_SHAPES,
+  GENDERS, SKIN_TONES, HAIR_STYLES, HAIR_COLORS,
 } from './Avatar.jsx'
 import { Bar, MiniBar, IconGlyph } from './ui.jsx'
 import { TIERS, ITEMS, SKILLS, skillLevel, skillStreak } from './game.js'
@@ -33,11 +33,20 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
       ))}
     </div>
   )
+  const RampSw = ({ options, k }) => (
+    <div className="swatches">
+      {options.map(o => (
+        <div key={o.id} title={o.name}
+          className={'swatch' + ((profile.avatar?.[k] || options[0].id) === o.id ? ' sel' : '')}
+          style={{ background: o.ramp[3] }} onClick={() => onAvatar({ ...profile.avatar, [k]: o.id })} />
+      ))}
+    </div>
+  )
   return (
     <>
       <div className="card center">
         <div className="row" style={{ justifyContent: 'center' }}>
-          <Avatar avatar={profile.avatar} equipped={profile.equipped} size={120} mood={mood} />
+          <Avatar avatar={profile.avatar} size={120} />
           <Pet color={petColor} size={70} mood={mood} name="Pixi" />
         </div>
         <h1>{profile.name}</h1>
@@ -55,30 +64,26 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
         <div className="card">
           <label>Forma</label>
           <div className="swatches">
-            {BODY_SHAPES.map(b => (
-              <div key={b.id} title={b.name}
-                className={'hair-opt' + ((profile.avatar?.body || 'a') === b.id ? ' sel' : '')}
-                onClick={() => onAvatar({ ...profile.avatar, body: b.id })}>
-                <Avatar avatar={{ ...profile.avatar, body: b.id }} size={42} mood="happy" />
+            {GENDERS.map(g => (
+              <div key={g.id} title={g.name}
+                className={'hair-opt' + ((profile.avatar?.gender || 'm') === g.id ? ' sel' : '')}
+                onClick={() => onAvatar({ ...profile.avatar, gender: g.id })}>
+                <Avatar avatar={{ ...profile.avatar, gender: g.id }} size={42} />
               </div>
             ))}
           </div>
-          <label>Piel</label><Sw colors={SKINS} k="skin" />
+          <label>Piel</label><RampSw options={SKIN_TONES} k="skin" />
           <label>Peinado</label>
           <div className="swatches">
             {HAIR_STYLES.map(h => (
               <div key={h.id} title={h.name}
-                className={'hair-opt' + ((profile.avatar?.hairStyle || 'clasico') === h.id ? ' sel' : '')}
+                className={'hair-opt' + ((profile.avatar?.hairStyle || 'none') === h.id ? ' sel' : '')}
                 onClick={() => onAvatar({ ...profile.avatar, hairStyle: h.id })}>
-                <Avatar avatar={{ ...profile.avatar, hairStyle: h.id }} size={42} mood="happy" />
+                <Avatar avatar={{ ...profile.avatar, hairStyle: h.id }} size={42} />
               </div>
             ))}
           </div>
-          <label>Pelo</label><Sw colors={HAIRS} k="hair" />
-          <label>Ojos</label><Sw colors={EYES} k="eye" />
-          <label>Polera</label><Sw colors={SHIRTS} k="shirt" />
-          <label>Pantalón</label><Sw colors={PANTS} k="pants" />
-          <label>Zapatos</label><Sw colors={SHOES} k="shoes" />
+          <label>Color de pelo</label><RampSw options={HAIR_COLORS} k="hairColor" />
           <label>Color de tu mascota</label>
           <div className="swatches">
             {PET_COLORS.map(c => (

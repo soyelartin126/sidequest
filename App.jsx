@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, SKINS, HAIRS, SHIRTS, BODY_SHAPES } from './Avatar.jsx'
+import Avatar, { ItemSprite, PixelCode, Pet, PET_COLORS, Cover, CoverThumb, COVERS, coverById, GENDERS, SKIN_TONES, HAIR_STYLES, HAIR_COLORS } from './Avatar.jsx'
 import * as db from './supabase.js'
 import Admin from './Admin.jsx'
 import Profile from './Profile.jsx'
@@ -46,7 +46,7 @@ function Onboarding({ profile, onFinish }) {
     <>
       <div className="logo">LevelApp</div>
       <div className="card center">
-        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={92} />
+        <Avatar avatar={profile.avatar} size={92} />
         <h1>¡Hola, {profile.name}!</h1>
         <p className="muted">Así funciona LevelApp</p>
         <div className="how">
@@ -382,14 +382,15 @@ export default function App() {
 function AuthScreen({ onNotify, toast, theme }) {
   const [mode, setMode] = useState('login') // login | signup | signup2
   const [form, setForm] = useState({ email: '', password: '', name: '', phone: '' })
-  const [avatar, setAvatar] = useState({ skin: SKINS[0], hair: HAIRS[0], shirt: SHIRTS[0] })
+  const [avatar, setAvatar] = useState({ gender: 'm', skin: SKIN_TONES[0].id, hairStyle: 'none', hairColor: HAIR_COLORS[0].id })
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const Sw = ({ colors, k }) => (
+  const RampSw = ({ options, k }) => (
     <div className="swatches">
-      {colors.map(c => (
-        <div key={c} className={'swatch' + (avatar[k] === c ? ' sel' : '')}
-          style={{ background: c }} onClick={() => setAvatar(a => ({ ...a, [k]: c }))} />
+      {options.map(o => (
+        <div key={o.id} title={o.name}
+          className={'swatch' + ((avatar[k] || options[0].id) === o.id ? ' sel' : '')}
+          style={{ background: o.ramp[3] }} onClick={() => setAvatar(a => ({ ...a, [k]: o.id }))} />
       ))}
     </div>
   )
@@ -478,17 +479,26 @@ function AuthScreen({ onNotify, toast, theme }) {
           <div className="card">
             <label>Forma</label>
             <div className="swatches">
-              {BODY_SHAPES.map(b => (
-                <div key={b.id} title={b.name}
-                  className={'hair-opt' + ((avatar.body || 'a') === b.id ? ' sel' : '')}
-                  onClick={() => setAvatar(a => ({ ...a, body: b.id }))}>
-                  <Avatar avatar={{ ...avatar, body: b.id }} size={42} />
+              {GENDERS.map(g => (
+                <div key={g.id} title={g.name}
+                  className={'hair-opt' + ((avatar.gender || 'm') === g.id ? ' sel' : '')}
+                  onClick={() => setAvatar(a => ({ ...a, gender: g.id }))}>
+                  <Avatar avatar={{ ...avatar, gender: g.id }} size={42} />
                 </div>
               ))}
             </div>
-            <label>Piel</label><Sw colors={SKINS} k="skin" />
-            <label>Pelo</label><Sw colors={HAIRS} k="hair" />
-            <label>Polera</label><Sw colors={SHIRTS} k="shirt" />
+            <label>Piel</label><RampSw options={SKIN_TONES} k="skin" />
+            <label>Peinado</label>
+            <div className="swatches">
+              {HAIR_STYLES.map(h => (
+                <div key={h.id} title={h.name}
+                  className={'hair-opt' + ((avatar.hairStyle || 'none') === h.id ? ' sel' : '')}
+                  onClick={() => setAvatar(a => ({ ...a, hairStyle: h.id }))}>
+                  <Avatar avatar={{ ...avatar, hairStyle: h.id }} size={42} />
+                </div>
+              ))}
+            </div>
+            <label>Color de pelo</label><RampSw options={HAIR_COLORS} k="hairColor" />
             <button disabled={busy} onClick={submitSignup}>
               {busy ? 'Creando cuenta…' : '¡Comenzar la aventura!'}
             </button>
@@ -514,7 +524,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingR
       <Cover id={coverById(profile.avatar?.cover).id} image={coverBanner?.image} greeting={`Hola, ${profile.name}`} sub="Gamifica tu vida" />
 
       <div className="card row lift">
-        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} mood={mood} />
+        <Avatar avatar={profile.avatar} size={84} />
         <div className="grow">
           <h1>{profile.name}</h1>
           <span className="chip">Nivel {lvl.level} · {lvl.title}</span>

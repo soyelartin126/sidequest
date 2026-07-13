@@ -1,79 +1,6 @@
-// Avatar pixel-art renderizado como SVG a partir de grillas de caracteres.
-// s=piel e=ojo b=polera p=pantalon z=zapato .=vacio  (el pelo es capa aparte)
-
-const BODY_A = [
-  '..............',
-  '..............',
-  '..ssssssssss..',
-  '..ssssssssss..',
-  '..ssessse.ss..',
-  '...ssssssss...',
-  '...ss.ss.ss...',
-  '....ssssss....',
-  '.....ssss.....',
-  '...bbbbbbbb...',
-  '..bbbbbbbbbb..',
-  '.sbbbbbbbbbbs.',
-  '.sbbbbbbbbbbs.',
-  '...pppppppp...',
-  '...pp....pp...',
-  '...pp....pp...',
-  '...zz....zz...',
-]
-
-// Forma B: cintura mas marcada y caderas mas anchas (mismo grid 14x17 para calzar con los overlays)
-const BODY_B = [
-  '..............',
-  '..............',
-  '..ssssssssss..',
-  '..ssssssssss..',
-  '..ssessse.ss..',
-  '...ssssssss...',
-  '...ss.ss.ss...',
-  '....ssssss....',
-  '.....ssss.....',
-  '...bbbbbbbb...',
-  '..bbbbbbbbbb..',
-  '.sbbbbbbbbbbs.',
-  '..sbbbbbbbbs..',
-  '..pppppppppp..',
-  '...pp....pp...',
-  '...pp....pp...',
-  '...zz....zz...',
-]
-const BODIES = { a: BODY_A, b: BODY_B }
-
-// Formas basadas en imagen (assets de Liberated Pixel Cup, recoloreados).
-// Provisorias mientras se validan: reemplazables por diseno propio despues.
-export const IMAGE_BODIES = {
-  lpc_m: '/character/base_male.png',
-  lpc_f: '/character/base_female.png',
-}
-
-export const BODY_SHAPES = [
-  { id: 'a', name: 'Forma A' },
-  { id: 'b', name: 'Forma B' },
-  { id: 'lpc_m', name: 'Nuevo (M)' },
-  { id: 'lpc_f', name: 'Nuevo (F)' },
-]
-
-// ---- Peinados (capa de pelo, [fila, col]) ----
-const hrow = (row, x0, x1) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [row, x0 + i])
-const HAIRSTYLES = {
-  clasico: [...hrow(0, 4, 9), ...hrow(1, 3, 10), ...hrow(2, 2, 11), [3, 2], [3, 3], [4, 2]],
-  corto: [...hrow(1, 4, 9), ...hrow(2, 3, 10), [3, 2], [3, 3], [3, 10], [3, 11]],
-  largo: [...hrow(0, 4, 9), ...hrow(1, 3, 10), ...hrow(2, 2, 11), [3, 2], [3, 3], [3, 10], [3, 11],
-    [4, 2], [4, 11], [5, 2], [5, 11], [6, 2], [6, 11], [7, 3], [7, 10]],
-  afro: [...hrow(-1, 4, 9), ...hrow(0, 3, 10), ...hrow(1, 2, 11), ...hrow(2, 2, 11),
-    [3, 2], [3, 11], [4, 2], [4, 11]],
-  mono: [...hrow(-2, 6, 7), ...hrow(-1, 6, 7), ...hrow(0, 4, 9), ...hrow(1, 3, 10), ...hrow(2, 2, 11), [3, 2], [3, 3]],
-  crestas: [[-1, 5], [-1, 7], [-1, 9], ...hrow(0, 5, 9), ...hrow(1, 6, 8), [2, 7]],
-}
-export const HAIR_STYLES = [
-  { id: 'clasico', name: 'Clásico' }, { id: 'corto', name: 'Corto' },
-  { id: 'largo', name: 'Largo' }, { id: 'afro', name: 'Afro' },
-  { id: 'mono', name: 'Moño' }, { id: 'crestas', name: 'Crestas' },
-]
+import { useEffect, useState } from 'react'
+import { renderCharacter, GENDERS, SKIN_TONES, HAIR_COLORS, HAIR_STYLES } from './characterEngine.js'
+export { GENDERS, SKIN_TONES, HAIR_COLORS, HAIR_STYLES }
 
 // helpers para construir overlays [fila, col, color]
 const strip = (row, x0, x1, c) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [row, x0 + i, c])
@@ -128,60 +55,21 @@ const OVERLAYS = {
     ...px(16, 13, '#2E7D32'), ...px(11, 13, '#F4511E')],
 }
 
-export const SKINS = ['#FFDBAC', '#FFCC9C', '#F1B47E', '#E0A06E', '#C68B59', '#A9714B', '#8D5524', '#5C3A21']
-export const HAIRS = ['#2B1B12', '#5D4037', '#8D5A2B', '#B8722C', '#D6A24C', '#E8B84B',
-  '#9E9E9E', '#EDEDED', '#C0392B', '#7C5CBF', '#2E7D4F', '#1E88E5']
-export const SHIRTS = ['#F5811F', '#E7420F', '#2A9D8F', '#3582DB', '#16263F', '#7C5CBF',
-  '#D81B60', '#F2C14E', '#3F7D5A', '#6B7480']
-export const PANTS = ['#2B3440', '#4A4A5A', '#3A5A8C', '#5C4433', '#2E7D4F', '#6B7480', '#7C5CBF']
-export const SHOES = ['#6D4C41', '#2B3440', '#E7420F', '#3582DB', '#EDEDED', '#7C5CBF']
-export const EYES = ['#3A2C2A', '#3F6BA5', '#2E7D4F', '#6D4C41', '#111111']
-
-// boca segun el animo (color labios sobre piel solida, filas 5-6)
-const MOUTH = '#8A4A3A'
-const MOUTHS = {
-  happy: [[5, 5], [5, 8], [6, 6], [6, 7]],   // sonrisa
-  neutral: [[5, 5], [5, 6], [5, 7], [5, 8]], // linea recta
-  sad: [[5, 6], [5, 7], [6, 5], [6, 8]],     // hacia abajo
-}
-
-export default function Avatar({ avatar, equipped = {}, size = 120, mood = 'happy' }) {
-  const { body = 'a' } = avatar || {}
-  if (IMAGE_BODIES[body]) {
-    const h = size * 19 / 14
-    return (
-      <div style={{ width: size, height: h, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-        aria-label="avatar">
-        <img src={IMAGE_BODIES[body]} alt="" width={size} height={size}
-          style={{ imageRendering: 'pixelated', maxHeight: '100%', objectFit: 'contain' }} />
-      </div>
-    )
-  }
-  const {
-    skin = SKINS[0], hair = HAIRS[1], shirt = SHIRTS[0],
-    hairStyle = 'clasico', pants = PANTS[0], shoes = SHOES[0], eye = EYES[0],
-  } = avatar || {}
-  const cmap = { s: skin, e: eye, b: shirt, p: pants, z: shoes }
-  const cells = []
-  ;(BODIES[body] || BODY_A).forEach((row, y) => {
-    row.split('').forEach((c, x) => {
-      if (cmap[c]) cells.push(<rect key={`b${x}-${y}`} x={x} y={y + 2} width="1" height="1" fill={cmap[c]} />)
-    })
-  })
-  ;(HAIRSTYLES[hairStyle] || HAIRSTYLES.clasico).forEach(([y, x], i) =>
-    cells.push(<rect key={`h${i}`} x={x} y={y + 2} width="1" height="1" fill={hair} />))
-  ;(MOUTHS[mood] || MOUTHS.happy).forEach(([y, x], i) =>
-    cells.push(<rect key={`m${i}`} x={x} y={y + 2} width="1" height="1" fill={MOUTH} />))
-  Object.values(equipped).forEach(itemId => {
-    const ov = OVERLAYS[itemId]
-    if (ov) ov.forEach(([y, x, color], i) =>
-      cells.push(<rect key={`o${itemId}-${i}`} x={x} y={y + 2} width="1" height="1" fill={color} />))
-  })
+export default function Avatar({ avatar, size = 120 }) {
+  const { gender = 'm', skin = 'light', hairStyle = 'none', hairColor = 'dark_brown' } = avatar || {}
+  const [src, setSrc] = useState(null)
+  useEffect(() => {
+    let alive = true
+    renderCharacter({ gender, skin, hairStyle, hairColor }).then(url => { if (alive) setSrc(url) })
+    return () => { alive = false }
+  }, [gender, skin, hairStyle, hairColor])
+  const h = size * 19 / 14
   return (
-    <svg viewBox="0 0 14 19" width={size} height={size * 19 / 14}
-      shapeRendering="crispEdges" aria-label="avatar">
-      {cells}
-    </svg>
+    <div style={{ width: size, height: h, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+      aria-label="avatar">
+      {src && <img src={src} alt="" width={size} height={size}
+        style={{ imageRendering: 'pixelated', maxHeight: '100%', objectFit: 'contain' }} />}
+    </div>
   )
 }
 
