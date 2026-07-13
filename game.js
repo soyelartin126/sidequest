@@ -188,30 +188,30 @@ export function tierForDays(days) {
 export const ITEMS = [
   // ---- logros automaticos ----
   { id: 'gorra', name: 'Gorra de novato', slot: 'head', kind: 'logro', desc: 'Tu primer check-in.' },
-  { id: 'llama', name: 'Llamita fiel', slot: 'pet', kind: 'logro', desc: '7 días de racha.' },
+  { id: 'llama', name: 'Dije de cobre', slot: 'chest', kind: 'logro', desc: '7 días de racha.' },
   { id: 'medalla', name: 'Medalla patrocinada', slot: 'chest', kind: 'logro', desc: 'Primer reto patrocinado completado.' },
-  { id: 'trofeo', name: 'Trofeo dorado', slot: 'side', kind: 'logro', desc: '3 misiones completadas.' },
+  { id: 'trofeo', name: 'Sombrero de copa', slot: 'head', kind: 'logro', desc: '3 misiones completadas.' },
   // ---- FACIL (1-3 dias) ----
   { id: 'bandana', name: 'Bandana', slot: 'head', kind: 'loot', tier: 'facil', reqCheckins: 2, desc: 'Para partir con estilo.' },
   { id: 'gorro_hongo', name: 'Sombrero de explorador', slot: 'head', kind: 'loot', tier: 'facil', reqCheckins: 3, desc: 'Un clásico de los pixeles.' },
-  { id: 'pocion', name: 'Poción de ánimo', slot: 'side', kind: 'loot', tier: 'facil', reqCheckins: 2, desc: '+10 motivación (efecto visual).' },
+  { id: 'pocion', name: 'Vara de cristal', slot: 'hand', kind: 'loot', tier: 'facil', reqCheckins: 2, desc: '+10 motivación (efecto visual).' },
   { id: 'lentes', name: 'Lentes de sol', slot: 'face', kind: 'loot', tier: 'facil', reqCheckins: 3, desc: 'Nadie te reconoce en el gym.' },
   // ---- MEDIO (4-14 dias) ----
   { id: 'escudo', name: 'Escudo de madera', slot: 'hand', kind: 'loot', tier: 'medio', reqCheckins: 6, desc: 'Bloquea excusas.' },
   { id: 'capa_azul', name: 'Capa azul', slot: 'back', kind: 'loot', tier: 'medio', reqCheckins: 9, desc: 'Los héroes parten por algo.' },
   { id: 'botas', name: 'Botas veloces', slot: 'feet', kind: 'loot', tier: 'medio', reqCheckins: 8, desc: '+2 velocidad al salir a trotar.' },
-  { id: 'gato', name: 'Gato pixel', slot: 'pet', kind: 'loot', tier: 'medio', reqCheckins: 12, desc: 'Te acompaña, te juzga poco.' },
+  { id: 'gato', name: 'Máscara misteriosa', slot: 'face', kind: 'loot', tier: 'medio', reqCheckins: 12, desc: 'Te acompaña, pero no dice nada.' },
   // ---- DIFICIL (15-30 dias) ----
   { id: 'espada', name: 'Espada pixel', slot: 'hand', kind: 'loot', tier: 'dificil', reqCheckins: 14, desc: 'El arma del constante.' },
   { id: 'espada_fuego', name: 'Espada de fuego', slot: 'hand', kind: 'loot', tier: 'dificil', reqCheckins: 20, desc: 'Forjada en 20 check-ins.' },
   { id: 'casco', name: 'Casco de caballero', slot: 'head', kind: 'loot', tier: 'dificil', reqCheckins: 24, desc: 'Disciplina de acero.' },
   { id: 'capa', name: 'Capa de viajero', slot: 'back', kind: 'loot', tier: 'dificil', reqCheckins: 16, desc: 'Del club de los que no fallan.' },
-  { id: 'buho', name: 'Búho sabio', slot: 'pet', kind: 'loot', tier: 'dificil', reqCheckins: 18, desc: 'Sabe que vas a llegar.' },
+  { id: 'buho', name: 'Gema sabia', slot: 'chest', kind: 'loot', tier: 'dificil', reqCheckins: 18, desc: 'Sabe que vas a llegar.' },
   // ---- LEGENDARIO (30+ dias) ----
   { id: 'alas', name: 'Alas pixel', slot: 'back', kind: 'loot', tier: 'legendario', reqCheckins: 31, desc: 'Un mes entero. Vuelas.' },
-  { id: 'dragon', name: 'Dragón bebé', slot: 'pet', kind: 'loot', tier: 'legendario', reqCheckins: 40, desc: 'Solo para leyendas pacientes.' },
+  { id: 'dragon', name: 'Cetro de diamante', slot: 'hand', kind: 'loot', tier: 'legendario', reqCheckins: 40, desc: 'Solo para leyendas pacientes.' },
   { id: 'corona', name: 'Corona legendaria', slot: 'head', kind: 'loot', tier: 'legendario', reqCheckins: 45, desc: 'La constancia hecha corona.' },
-  { id: 'aura', name: 'Aura dorada', slot: 'aura', kind: 'loot', tier: 'legendario', reqCheckins: 60, desc: 'Brillas. Literalmente.' },
+  { id: 'aura', name: 'Penacho legendario', slot: 'head', kind: 'loot', tier: 'legendario', reqCheckins: 60, desc: 'Un plumaje que se gana con constancia.' },
 ]
 
 export const itemById = id => ITEMS.find(i => i.id === id)

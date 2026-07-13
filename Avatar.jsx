@@ -2,59 +2,6 @@ import { useEffect, useState } from 'react'
 import { renderCharacter, AVATAR_ASPECT, GENDERS, SKIN_TONES, HAIR_COLORS, HAIR_STYLES } from './characterEngine.js'
 export { GENDERS, SKIN_TONES, HAIR_COLORS, HAIR_STYLES }
 
-// helpers para construir overlays [fila, col, color]
-const strip = (row, x0, x1, c) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [row, x0 + i, c])
-const px = (row, col, c) => [[row, col, c]]
-
-const OVERLAYS = {
-  // ---- cabeza ----
-  gorra: [...strip(0, 3, 10, '#F4511E'), ...strip(1, 2, 3, '#F4511E'), ...strip(1, 10, 12, '#F4511E')],
-  bandana: [...strip(2, 2, 11, '#D62828'), ...px(3, 12, '#D62828'), ...px(4, 12, '#D62828')],
-  gorro_hongo: [...strip(-1, 4, 9, '#E63946'), ...strip(0, 2, 11, '#E63946'),
-    ...px(-1, 6, '#FFFFFF'), ...px(0, 4, '#FFFFFF'), ...px(0, 9, '#FFFFFF')],
-  casco: [...strip(-1, 4, 9, '#8D99AE'), ...strip(0, 3, 10, '#8D99AE'), ...strip(1, 2, 3, '#8D99AE'),
-    ...strip(1, 10, 11, '#8D99AE'), ...px(-2, 6, '#E63946'), ...px(-2, 7, '#E63946')],
-  corona: [...px(-1, 4, '#FFC93C'), ...px(-1, 6, '#FFC93C'), ...px(-1, 8, '#FFC93C'), ...strip(0, 4, 8, '#FFC93C')],
-  // ---- cara ----
-  lentes: [...strip(4, 3, 5, '#3A2C2A'), ...strip(4, 7, 9, '#3A2C2A'), ...px(4, 6, '#3A2C2A')],
-  // ---- mano ----
-  espada: [...px(7, 13, '#B0BEC5'), ...px(8, 13, '#B0BEC5'), ...px(9, 13, '#B0BEC5'),
-    ...px(10, 13, '#B0BEC5'), ...px(11, 12, '#8D6E63'), ...px(11, 13, '#FFC93C')],
-  espada_fuego: [...px(6, 13, '#FFC93C'), ...px(7, 13, '#F4511E'), ...px(8, 13, '#F4511E'),
-    ...px(9, 13, '#FFC93C'), ...px(10, 13, '#F4511E'), ...px(11, 12, '#8D6E63'), ...px(11, 13, '#FFC93C')],
-  escudo: [...strip(8, 12, 13, '#8D6E63'), ...strip(9, 12, 13, '#8D6E63'),
-    ...strip(10, 12, 13, '#8D6E63'), ...strip(11, 12, 13, '#8D6E63'), ...px(9, 12, '#FFC93C'), ...px(10, 13, '#FFC93C')],
-  // ---- espalda ----
-  capa: [...px(9, 1, '#7C5CBF'), ...px(10, 1, '#7C5CBF'), ...px(11, 0, '#7C5CBF'), ...px(12, 0, '#7C5CBF'),
-    ...px(13, 0, '#7C5CBF'), ...px(13, 1, '#7C5CBF'), ...px(9, 2, '#7C5CBF'), ...px(10, 2, '#7C5CBF')],
-  capa_azul: [...px(9, 1, '#1E88E5'), ...px(10, 1, '#1E88E5'), ...px(11, 0, '#1E88E5'), ...px(12, 0, '#1E88E5'),
-    ...px(13, 0, '#1E88E5'), ...px(13, 1, '#1E88E5'), ...px(9, 2, '#1E88E5'), ...px(10, 2, '#1E88E5')],
-  alas: [...px(8, 1, '#FFF8E7'), ...px(9, 0, '#FFF8E7'), ...px(9, 1, '#FFF8E7'), ...px(10, 0, '#FFF8E7'),
-    ...px(10, 1, '#FFF8E7'), ...px(11, 1, '#FFF8E7'),
-    ...px(8, 12, '#FFF8E7'), ...px(9, 12, '#FFF8E7'), ...px(9, 13, '#FFF8E7'), ...px(10, 12, '#FFF8E7'),
-    ...px(10, 13, '#FFF8E7'), ...px(11, 12, '#FFF8E7')],
-  // ---- pecho / pies / aura ----
-  medalla: [...px(10, 6, '#FFC93C'), ...px(10, 7, '#FFC93C'), ...px(9, 6, '#F4511E')],
-  botas: [...strip(16, 3, 4, '#F4511E'), ...strip(16, 9, 10, '#F4511E'), ...px(15, 3, '#F4511E'), ...px(15, 9, '#F4511E')],
-  aura: [...px(1, 1, '#FFC93C'), ...px(4, 0, '#FFC93C'), ...px(8, 0, '#FFE28A'), ...px(12, 13, '#FFE28A'),
-    ...px(2, 12, '#FFC93C'), ...px(6, 13, '#FFE28A'), ...px(14, 1, '#FFC93C'), ...px(-1, 11, '#FFE28A')],
-  // ---- mascotas / lado ----
-  llama: [...px(13, 12, '#FFC93C'), ...px(14, 12, '#F4511E'), ...px(15, 12, '#F4511E'),
-    ...px(16, 12, '#4A2C2A'), ...px(14, 13, '#F4511E'), ...px(15, 13, '#FFC93C')],
-  trofeo: [...px(14, 0, '#FFC93C'), ...px(15, 0, '#FFC93C'), ...px(15, 1, '#FFC93C'),
-    ...px(16, 0, '#E9A820'), ...px(16, 1, '#E9A820')],
-  pocion: [...px(14, 1, '#B565D8'), ...px(15, 0, '#B565D8'), ...px(15, 1, '#B565D8'),
-    ...px(16, 0, '#8E44AD'), ...px(16, 1, '#8E44AD'), ...px(13, 1, '#8D6E63')],
-  gato: [...px(13, 12, '#9E9E9E'), ...px(13, 13, '#9E9E9E'), ...px(14, 12, '#9E9E9E'), ...px(14, 13, '#9E9E9E'),
-    ...px(15, 12, '#757575'), ...px(15, 13, '#757575'), ...px(16, 12, '#757575'), ...px(12, 12, '#9E9E9E'), ...px(12, 13, '#9E9E9E')],
-  buho: [...px(13, 0, '#8D6E63'), ...px(13, 1, '#8D6E63'), ...px(14, 0, '#A1887F'), ...px(14, 1, '#A1887F'),
-    ...px(15, 0, '#8D6E63'), ...px(15, 1, '#8D6E63'), ...px(16, 0, '#6D4C41'), ...px(16, 1, '#6D4C41'),
-    ...px(14, 0, '#FFC93C')],
-  dragon: [...px(12, 12, '#43A047'), ...px(12, 13, '#43A047'), ...px(13, 12, '#66BB6A'), ...px(13, 13, '#43A047'),
-    ...px(14, 12, '#66BB6A'), ...px(14, 13, '#66BB6A'), ...px(15, 12, '#43A047'), ...px(15, 13, '#43A047'),
-    ...px(16, 13, '#2E7D32'), ...px(11, 13, '#F4511E')],
-}
-
 export default function Avatar({ avatar, equipped = {}, size = 120, animate = false }) {
   const { gender = 'm', skin = 'light', hairStyle = 'none', hairColor = 'dark_brown' } = avatar || {}
   const [src, setSrc] = useState(null)
@@ -113,35 +60,21 @@ export function Pet({ color = PET_COLORS[0], size = 64, mood = 'happy', name }) 
   )
 }
 
-// mini-sprite: dibuja las celdas del overlay del item, normalizadas
 // items con pieza LPC real (ver characterEngine.js) -> imagen de icono
 const ITEM_ICONS = {
   gorra: 'gorra', bandana: 'bandana', gorro_hongo: 'gorro_hongo', casco: 'casco', corona: 'corona',
   lentes: 'lentes', espada: 'espada', espada_fuego: 'espada_fuego', escudo: 'escudo',
   medalla: 'medalla_m', botas: 'botas', capa: 'capa_bg', capa_azul: 'capa_azul_bg', alas: 'alas_fg',
+  llama: 'llama_m', trofeo: 'trofeo', pocion: 'pocion', gato: 'gato', buho: 'buho_m',
+  dragon: 'dragon', aura: 'aura',
 }
 
 export function ItemSprite({ id, size = 44 }) {
   const icon = ITEM_ICONS[id]
-  if (icon) {
-    return (
-      <img src={`/character/items/${icon}.png`} alt="" width={size} height={size}
-        style={{ imageRendering: 'pixelated', objectFit: 'contain' }} />
-    )
-  }
-  const ov = OVERLAYS[id]
-  if (!ov) return null
-  const ys = ov.map(c => c[0]), xs = ov.map(c => c[1])
-  const y0 = Math.min(...ys), x0 = Math.min(...xs)
-  const w = Math.max(...xs) - x0 + 1, h = Math.max(...ys) - y0 + 1
-  const dim = Math.max(w, h)
-  const ox = (dim - w) / 2, oy = (dim - h) / 2
+  if (!icon) return null
   return (
-    <svg viewBox={`0 0 ${dim} ${dim}`} width={size} height={size} shapeRendering="crispEdges">
-      {ov.map(([y, x, c], i) => (
-        <rect key={i} x={x - x0 + ox} y={y - y0 + oy} width="1" height="1" fill={c} />
-      ))}
-    </svg>
+    <img src={`/character/items/${icon}.png`} alt="" width={size} height={size}
+      style={{ imageRendering: 'pixelated', objectFit: 'contain' }} />
   )
 }
 

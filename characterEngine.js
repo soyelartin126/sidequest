@@ -70,6 +70,13 @@ const ITEM_LAYERS = {
   capa: { slot: 'back', bgFile: 'capa_bg', fgFile: 'capa_fg' },
   capa_azul: { slot: 'back', bgFile: 'capa_azul_bg', fgFile: 'capa_azul_fg' },
   alas: { slot: 'back', bgFile: 'alas_bg', fgFile: 'alas_fg' },
+  llama: { slot: 'chest', file: 'llama', gendered: true },
+  trofeo: { slot: 'head', file: 'trofeo' },
+  pocion: { slot: 'hand', file: 'pocion' },
+  gato: { slot: 'face', file: 'gato' },
+  buho: { slot: 'chest', file: 'buho', gendered: true },
+  dragon: { slot: 'hand', file: 'dragon' },
+  aura: { slot: 'head', file: 'aura' },
 }
 
 const hexToRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
