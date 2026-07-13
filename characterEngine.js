@@ -12,6 +12,11 @@
 const SKIN_TEMPLATE = [[0x27,0x19,0x20],[0x99,0x42,0x3c],[0xcc,0x86,0x65],[0xe4,0xa4,0x7c],[0xf9,0xd5,0xba],[0xfa,0xec,0xe7]]
 const HAIR_TEMPLATE = [[0x26,0x0d,0x14],[0x6a,0x11,0x08],[0xa4,0x26,0x00],[0xbf,0x40,0x00],[0xe5,0x56,0x00],[0xff,0x8a,0x00]]
 
+// ventana de recorte sobre el lienzo de trabajo de 64x64 (deja algo de aire
+// para gorros/alas sin recortarlos, pero saca el margen muerto del resto)
+const CROP = { x: 8, y: 2, w: 48, h: 62 }
+export const AVATAR_ASPECT = CROP.h / CROP.w
+
 export const SKIN_TONES = [
   { id: 'light', name: 'Clara', ramp: ['#271920', '#99423c', '#cc8665', '#e4a47c', '#f9d5ba', '#faece7'] },
   { id: 'amber', name: 'Ámbar', ramp: ['#281716', '#9e3e37', '#d28144', '#ea9f54', '#fdd082', '#fbe7a4'] },
@@ -159,7 +164,15 @@ export async function renderCharacter({
   if (faceItem) await drawPlain(ctx, `${I}/${faceItem.file}.png`)
   if (back?.fgFile) await drawPlain(ctx, `${I}/${back.fgFile}.png`)
 
-  const url = canvas.toDataURL()
+  // recorta el margen vacio alrededor del personaje (el lienzo de 64x64 trae
+  // aire de sobra por como vienen las plantillas LPC) para que se vea mas
+  // grande dentro de su caja. Ventana fija (no por bbox real) para que la
+  // posicion no salte segun el gorro/pelo equipado.
+  const out = document.createElement('canvas')
+  out.width = CROP.w; out.height = CROP.h
+  out.getContext('2d').drawImage(canvas, CROP.x, CROP.y, CROP.w, CROP.h, 0, 0, CROP.w, CROP.h)
+
+  const url = out.toDataURL()
   renderCache.set(key, url)
   return url
 }

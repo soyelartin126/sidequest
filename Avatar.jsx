@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { renderCharacter, GENDERS, SKIN_TONES, HAIR_COLORS, HAIR_STYLES } from './characterEngine.js'
+import { renderCharacter, AVATAR_ASPECT, GENDERS, SKIN_TONES, HAIR_COLORS, HAIR_STYLES } from './characterEngine.js'
 export { GENDERS, SKIN_TONES, HAIR_COLORS, HAIR_STYLES }
 
 // helpers para construir overlays [fila, col, color]
@@ -65,13 +65,13 @@ export default function Avatar({ avatar, equipped = {}, size = 120, animate = fa
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gender, skin, hairStyle, hairColor, eqKey])
-  const h = size * 19 / 14
+  const h = size * AVATAR_ASPECT
   return (
     <div className={animate ? 'avatar-idle' : ''}
       style={{ width: size, height: h, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
       aria-label="avatar">
-      {src && <img src={src} alt="" width={size} height={size}
-        style={{ imageRendering: 'pixelated', maxHeight: '100%', objectFit: 'contain' }} />}
+      {src && <img src={src} alt=""
+        style={{ width: '100%', height: '100%', imageRendering: 'pixelated', objectFit: 'contain' }} />}
     </div>
   )
 }

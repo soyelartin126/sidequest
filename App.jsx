@@ -527,7 +527,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingR
       <Cover id={coverById(profile.avatar?.cover).id} image={coverBanner?.image} greeting={`Hola, ${profile.name}`} sub="Gamifica tu vida" />
 
       <div className="card row lift">
-        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={84} animate />
+        <Avatar avatar={profile.avatar} equipped={profile.equipped} size={110} animate />
         <div className="grow">
           <h1>{profile.name}</h1>
           <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
