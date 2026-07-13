@@ -3,7 +3,7 @@ import Avatar, {
   Pet, PET_COLORS, CoverThumb, COVERS, ItemSprite,
   GENDERS, SKIN_TONES, HAIR_STYLES, HAIR_COLORS,
 } from './Avatar.jsx'
-import { Bar, MiniBar, IconGlyph } from './ui.jsx'
+import { Bar, MiniBar, IconGlyph, CompanyBadge } from './ui.jsx'
 import { TIERS, ITEMS, SKILLS, skillLevel, skillStreak } from './game.js'
 
 export function SkillCard({ skill, xp, streakDays }) {
@@ -19,9 +19,10 @@ export function SkillCard({ skill, xp, streakDays }) {
   )
 }
 
-function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onCredits, onLogout }) {
+function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], groups = [], theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onCredits, onLogout }) {
   const [editing, setEditing] = useState(false)
   const completed = goals.filter(g => g.status === 'completed').length
+  const company = groups.find(g => g.businessName)
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
   const curCover = profile.avatar?.cover || COVERS[0].id
   const allSkills = [...SKILLS, ...(profile.avatar?.customSkills || [])]
@@ -51,6 +52,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], th
         </div>
         <h1>{profile.name}</h1>
         <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
+        {company && <CompanyBadge name={company.businessName} logo={company.businessLogo} />}
         <div className="muted small">
           {profile.xp} XP · mejor racha: {profile.bestStreak || 0} días · {completed} misiones completadas
         </div>

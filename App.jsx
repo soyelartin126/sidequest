@@ -4,7 +4,7 @@ import * as db from './supabase.js'
 import Admin from './Admin.jsx'
 import Profile from './Profile.jsx'
 import { GoalCard, Goals, NewGoal, GoalDetail } from './Goals.jsx'
-import { Bar, Pwd, IconGlyph, Backdrop } from './ui.jsx'
+import { Bar, Pwd, IconGlyph, Backdrop, CompanyBadge } from './ui.jsx'
 import { resizePhoto } from './utils.js'
 import {
   levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
@@ -293,6 +293,7 @@ export default function App() {
       onOpen={g => setView({ name: 'group', id: g.id })}
       onChanged={() => refresh()} />,
     profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals} mood={mood} banners={banners}
+      groups={groups}
       theme={theme} onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
       onAvatar={async av => { await db.saveProfile({ ...profile, avatar: av }); refresh() }}
       onEquip={async item => {
@@ -593,6 +594,19 @@ function Quests({ quests, goals, pendingRedeem, onJoin, onRedeem }) {
   const joined = new Set(goals.map(g => g.questId).filter(Boolean))
   const activeQuests = quests.filter(q => q.active)
   const [busy, setBusy] = useState(false)
+  const [joinCounts, setJoinCounts] = useState({})
+  const now = Date.now()
+
+  useEffect(() => {
+    const ids = activeQuests.filter(q => q.capacity != null).map(q => q.id)
+    if (ids.length === 0) { setJoinCounts({}); return }
+    db.fetchQuestJoinCounts(ids).then(({ data }) => {
+      const counts = {}
+      for (const row of data || []) counts[row.quest_id] = +row.joined_count
+      setJoinCounts(counts)
+    })
+  }, [activeQuests.length])
+
   return (
     <>
       <h1>Premios</h1>
@@ -613,6 +627,16 @@ function Quests({ quests, goals, pendingRedeem, onJoin, onRedeem }) {
       {activeQuests.length === 0 && <p className="muted">Pronto habrá nuevos retos.</p>}
       {activeQuests.map(q => {
         const already = joined.has(q.id)
+        const taken = joinCounts[q.id] || 0
+        const full = q.capacity != null && taken >= q.capacity
+        const notStarted = q.startsAt && new Date(q.startsAt).getTime() > now
+        const ended = q.endsAt && new Date(q.endsAt).getTime() < now
+        const blocked = full || notStarted || ended
+        const label = already ? 'Ya estás en este reto'
+          : full ? 'Cupos agotados'
+          : notStarted ? 'Aún no empieza'
+          : ended ? 'Reto finalizado'
+          : '¡Acepto el reto!'
         return (
           <div key={q.id} className="card">
             {q.image && <img src={q.image} alt={q.sponsor}
@@ -621,9 +645,11 @@ function Quests({ quests, goals, pendingRedeem, onJoin, onRedeem }) {
             <div className="muted small">Patrocina: {q.sponsor} · {q.freqPerWeek}x/semana · {q.weeks} semanas</div>
             <div className="spacer" />
             <span className="chip">🎁 {q.prize}</span>
+            <span className="chip">📍 {q.comuna?.length > 0 ? q.comuna.join(', ') : 'Nacional'}</span>
+            {q.capacity != null && <span className="chip">{Math.max(0, q.capacity - taken)}/{q.capacity} cupos</span>}
             <div className="spacer" />
-            <button disabled={already || busy} onClick={async () => { setBusy(true); await onJoin(q); setBusy(false) }}>
-              {already ? 'Ya estás en este reto' : '¡Acepto el reto!'}
+            <button disabled={already || blocked || busy} onClick={async () => { setBusy(true); await onJoin(q); setBusy(false) }}>
+              {label}
             </button>
           </div>
         )
@@ -698,6 +724,7 @@ function Groups({ groups, profile, onOpen, onNotify, onChanged }) {
           <div className="grow">
             <h3>{g.name}</h3>
             <div className="muted small">{g.theme} · {g.members.length} {g.members.length === 1 ? 'miembro' : 'miembros'}</div>
+            {g.businessName && <CompanyBadge name={g.businessName} logo={g.businessLogo} />}
           </div>
           {(g.myRole === 'admin' || g.ownerId === profile.id) && <span className="chip">admin</span>}
         </div>
@@ -742,8 +769,11 @@ function Groups({ groups, profile, onOpen, onNotify, onChanged }) {
             setBusy(true)
             const { error } = await db.joinGroup(profile.id, code)
             setBusy(false)
-            if (error) onNotify('Código no válido')
-            else { onNotify('¡Bienvenido al grupo!'); setMode(null); setCode(''); onChanged() }
+            if (error) {
+              onNotify(error.message?.includes('not_invited')
+                ? 'Tu correo no está autorizado por esta empresa. Pídele al admin que te agregue.'
+                : 'Código no válido')
+            } else { onNotify('¡Bienvenido al grupo!'); setMode(null); setCode(''); onChanged() }
           }}>Unirme</button>
           <div className="spacer" />
           <button className="sec" onClick={() => setMode(null)}>Cancelar</button>
@@ -759,6 +789,8 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
   const [form, setForm] = useState(null)
   const [progress, setProgress] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [invites, setInvites] = useState(null)
+  const [newEmail, setNewEmail] = useState('')
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   useEffect(() => {
@@ -774,6 +806,11 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
     })
   }, [quests.length])
 
+  useEffect(() => {
+    if (!isAdmin || !g.businessId) return
+    db.fetchCompanyInvites(g.id).then(({ data }) => setInvites(data || []))
+  }, [g.id, g.businessId, isAdmin])
+
   const nameOf = id => g.members.find(m => m.id === id)?.name || '—'
 
   return (
@@ -782,12 +819,54 @@ function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onCha
         <button className="sec mini" onClick={onBack}>← Volver</button>
         <h1>{g.name}</h1>
       </div>
+      {g.businessName && <CompanyBadge name={g.businessName} logo={g.businessLogo} size={20} />}
 
       <div className="card">
         <div className="muted small">Tema: {g.theme} · Código de invitación:</div>
         <div className="code" style={{ fontSize: 22, letterSpacing: 4 }}>{g.inviteCode}</div>
-        <div className="muted small">Compártelo para que se unan al grupo.</div>
+        <div className="muted small">
+          {g.businessId
+            ? 'Compártelo con tu equipo: solo los correos que autorices abajo podrán usarlo.'
+            : 'Compártelo para que se unan al grupo.'}
+        </div>
       </div>
+
+      {isAdmin && g.businessId && (
+        <>
+          <h2>Equipo autorizado</h2>
+          <div className="card flat">
+            {invites === null && <p className="muted small">Cargando…</p>}
+            {invites?.length === 0 && <p className="muted small">Aún no agregas correos. Nadie puede unirse todavía.</p>}
+            {invites?.map(inv => (
+              <div key={inv.id} className="hist">
+                <IconGlyph icon="✉️" size={18} />
+                <div className="grow">
+                  <b>{inv.email}</b>
+                  {inv.joined_user_id && <span className="muted small"> · ya se unió</span>}
+                </div>
+                <button className="mini sec" onClick={async () => {
+                  await db.removeCompanyInvite(inv.id)
+                  setInvites(list => list.filter(x => x.id !== inv.id))
+                }}>Quitar</button>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <label>Agregar correo al equipo</label>
+            <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="persona@empresa.com" />
+            <button disabled={!newEmail.includes('@') || busy} onClick={async () => {
+              setBusy(true)
+              const { error } = await db.addCompanyInvite(g.id, newEmail)
+              setBusy(false)
+              if (error) onNotify(error.message.includes('duplicate') ? 'Ese correo ya está autorizado' : error.message)
+              else {
+                setNewEmail('')
+                db.fetchCompanyInvites(g.id).then(({ data }) => setInvites(data || []))
+              }
+            }}>+ Agregar</button>
+          </div>
+        </>
+      )}
 
       <h2>Miembros ({g.members.length})</h2>
       <div className="card flat">

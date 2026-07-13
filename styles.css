@@ -63,6 +63,7 @@ h3 { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
 }
 .chip.ok { background: #DCEBFB; color: #0C447C; }
 .chip.prim { background: var(--prim); color: #fff; }
+.company-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--dark); color: var(--card); }
 
 .bar { border-radius: 999px; height: 16px; background: #EAEDF1;
   display: flex; gap: 3px; padding: 3px; overflow: hidden; }

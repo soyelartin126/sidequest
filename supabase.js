@@ -29,6 +29,8 @@ const rowToQuest = r => ({
   image: r.image_url, freqPerWeek: r.freq_per_week, weeks: +r.weeks,
   active: r.active, groupId: r.group_id, createdBy: r.created_by,
   icon: r.meta?.icon || null, skills: r.meta?.skills || [],
+  businessId: r.business_id, comuna: r.comuna || [], capacity: r.capacity ?? null,
+  startsAt: r.starts_at, endsAt: r.ends_at,
 })
 
 // ---------- auth ----------
@@ -55,7 +57,7 @@ export async function fetchState(userId) {
     sb.from('profiles').select('*').eq('id', userId).single(),
     sb.from('goals').select('*, checkins(*)').eq('user_id', userId).order('created_at'),
     sb.from('quests').select('*').order('created_at'),
-    sb.from('group_members').select('role, groups(*)').eq('user_id', userId),
+    sb.from('group_members').select('role, groups(*, businesses(id, name, logo_url))').eq('user_id', userId),
     sb.from('store_items').select('*').eq('active', true).order('created_at'),
   ])
   if (p.error) return { error: p.error }
@@ -67,6 +69,9 @@ export async function fetchState(userId) {
     groups.push({
       id: m.groups.id, name: m.groups.name, theme: m.groups.theme,
       inviteCode: m.groups.invite_code, ownerId: m.groups.owner_id, myRole: m.role,
+      businessId: m.groups.businesses?.id || null,
+      businessName: m.groups.businesses?.name || null,
+      businessLogo: m.groups.businesses?.logo_url || null,
       members: (members || []).map(x => ({
         id: x.user_id, role: x.role, name: x.profiles?.name || '—',
       })),
@@ -119,9 +124,14 @@ export const insertQuest = (userId, q) => sb.from('quests').insert({
   image_url: q.image || null, freq_per_week: q.freqPerWeek, weeks: q.weeks,
   active: true, group_id: q.groupId || null, created_by: userId,
   meta: { icon: q.icon || null, skills: q.skills || [] },
+  business_id: q.businessId || null, comuna: q.comuna?.length ? q.comuna : null,
+  capacity: q.capacity || null, starts_at: q.startsAt || null, ends_at: q.endsAt || null,
 })
 
 export const setQuestActive = (id, active) => sb.from('quests').update({ active }).eq('id', id)
+
+// ---------- empresas (B2B / B2B2C) ----------
+export const fetchBusinesses = () => sb.from('businesses').select('id, name, logo_url').order('name')
 
 // ---------- grupos ----------
 const makeInviteCode = () => {
@@ -143,12 +153,26 @@ export async function createGroup(userId, name, theme) {
 }
 
 export async function joinGroup(userId, code) {
-  // buscar el grupo por codigo via rpc simple: los no-miembros no pueden hacer select,
-  // asi que usamos una funcion? Para el MVP: select publico del codigo exacto
-  const { data, error } = await sb.rpc('join_group_by_code', { code })
+  // buscar el grupo por codigo via rpc: los no-miembros no pueden hacer select
+  // directo por RLS. v2 tambien exige correo autorizado si el grupo es de empresa.
+  const { data, error } = await sb.rpc('join_group_by_code_v2', { code })
   if (error) return { error }
   return { groupId: data }
 }
+
+// ---------- equipo autorizado de un grupo-empresa ----------
+export const fetchCompanyInvites = groupId => sb.from('company_invites')
+  .select('id, email, invited_at, joined_user_id').eq('group_id', groupId).order('invited_at')
+
+export const addCompanyInvite = (groupId, email) => sb.from('company_invites')
+  .insert({ group_id: groupId, email: email.trim().toLowerCase() })
+
+export const removeCompanyInvite = id => sb.from('company_invites').delete().eq('id', id)
+
+// cuantos ya se unieron a cada reto publico (para chequear cupos): goals
+// solo deja ver las filas propias, asi que se usa una funcion que cuenta
+// sin exponer quien se unio
+export const fetchQuestJoinCounts = questIds => sb.rpc('quest_join_counts', { quest_ids: questIds })
 
 // progreso de los miembros en los retos de un grupo
 export const fetchQuestGoals = questIds => sb.from('goals')

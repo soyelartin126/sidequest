@@ -5,9 +5,13 @@ import { ICONS, SKILLS, MAX_SKILLS_PER_GOAL } from './game.js'
 import { IconGlyph } from './ui.jsx'
 
 export default function Admin({ quests, profile, banners = [], onBack, onNotify, onChanged }) {
-  const empty = { title: '', sponsor: '', prize: '', icon: ICONS[0], skills: [], freqPerWeek: 3, weeks: 4, image: null }
+  const empty = {
+    title: '', sponsor: '', prize: '', icon: ICONS[0], skills: [], freqPerWeek: 3, weeks: 4, image: null,
+    scope: 'nacional', comuna: '', capacity: '', startsAt: '', endsAt: '', businessId: '',
+  }
   const [form, setForm] = useState(null)
   const [adminData, setAdminData] = useState(null)
+  const [businesses, setBusinesses] = useState([])
   const [busy, setBusy] = useState(false)
   const [bform, setBform] = useState({ name: '', price: 120, image: null })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -17,7 +21,10 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
       : f.skills.length < MAX_SKILLS_PER_GOAL ? [...f.skills, id] : f.skills,
   }))
 
-  useEffect(() => { db.fetchAdminData().then(setAdminData) }, [])
+  useEffect(() => {
+    db.fetchAdminData().then(setAdminData)
+    db.fetchBusinesses().then(({ data }) => setBusinesses(data || []))
+  }, [])
 
   return (
     <>
@@ -95,9 +102,39 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
           <input type="range" min="1" max="7" value={form.freqPerWeek} onChange={e => set('freqPerWeek', +e.target.value)} />
           <label>Semanas: {form.weeks}</label>
           <input type="range" min="1" max="8" value={form.weeks} onChange={e => set('weeks', +e.target.value)} />
+          <label>Empresa vinculada (opcional)</label>
+          <select value={form.businessId} onChange={e => set('businessId', e.target.value)}>
+            <option value="">Sin empresa</option>
+            {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <label>Alcance</label>
+          <div className="row">
+            <button type="button" className={form.scope === 'nacional' ? '' : 'sec'}
+              onClick={() => set('scope', 'nacional')}>Nacional</button>
+            <button type="button" className={form.scope === 'sector' ? '' : 'sec'}
+              onClick={() => set('scope', 'sector')}>Por sector</button>
+          </div>
+          {form.scope === 'sector' && (
+            <>
+              <label>Comunas donde aplica (separadas por coma)</label>
+              <input value={form.comuna} onChange={e => set('comuna', e.target.value)} placeholder="Ej: Providencia, Ñuñoa" />
+            </>
+          )}
+          <label>Cupos (vacío = ilimitado)</label>
+          <input type="number" min="1" value={form.capacity} onChange={e => set('capacity', e.target.value)} placeholder="Ilimitado" />
+          <label>Empieza (opcional)</label>
+          <input type="date" value={form.startsAt} onChange={e => set('startsAt', e.target.value)} />
+          <label>Termina (opcional)</label>
+          <input type="date" value={form.endsAt} onChange={e => set('endsAt', e.target.value)} />
           <button disabled={!form.title || !form.sponsor || !form.prize || busy} onClick={async () => {
             setBusy(true)
-            const { error } = await db.insertQuest(profile.id, form)
+            const { error } = await db.insertQuest(profile.id, {
+              ...form,
+              comuna: form.scope === 'sector' ? form.comuna.split(',').map(c => c.trim()).filter(Boolean) : [],
+              capacity: form.capacity ? +form.capacity : null,
+              startsAt: form.startsAt || null, endsAt: form.endsAt || null,
+              businessId: form.businessId || null,
+            })
             setBusy(false)
             if (error) onNotify(error.message)
             else { setForm(null); onNotify('Reto publicado'); onChanged() }

@@ -40,6 +40,19 @@ export function TierBadge({ weeks }) {
   return <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
 }
 
+// medallita de empresa: distintivo de que un grupo/usuario pertenece a una cuenta B2B
+export function CompanyBadge({ name, logo, size = 16 }) {
+  if (!name) return null
+  return (
+    <span className="chip company-badge" title={name}>
+      {logo
+        ? <img src={logo} alt="" style={{ width: size, height: size, objectFit: 'contain', borderRadius: 3 }} />
+        : '🏢'}
+      {name}
+    </span>
+  )
+}
+
 // input de contraseña con ojo para mostrar/ocultar
 export function Pwd({ value, onChange, placeholder }) {
   const [show, setShow] = useState(false)
