@@ -220,6 +220,13 @@ label { font-size: 13px; font-weight: 700; }
 .pet.droop svg { transform: translateY(2px); opacity: .85; }
 @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
+/* respiracion idle del personaje */
+.avatar-idle img { animation: breathe 2.4s ease-in-out infinite; transform-origin: bottom center; }
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-2px) scaleY(1.02); }
+}
+
 /* escudo de racha */
 .shields { display: flex; gap: 4px; align-items: center; margin-top: 8px; }
 .shield-ico { font-size: 15px; }
