@@ -42,9 +42,19 @@ const BODY_B = [
   '...zz....zz...',
 ]
 const BODIES = { a: BODY_A, b: BODY_B }
+
+// Formas basadas en imagen (assets de Liberated Pixel Cup, recoloreados).
+// Provisorias mientras se validan: reemplazables por diseno propio despues.
+export const IMAGE_BODIES = {
+  lpc_m: '/character/base_male.png',
+  lpc_f: '/character/base_female.png',
+}
+
 export const BODY_SHAPES = [
   { id: 'a', name: 'Forma A' },
   { id: 'b', name: 'Forma B' },
+  { id: 'lpc_m', name: 'Nuevo (M)' },
+  { id: 'lpc_f', name: 'Nuevo (F)' },
 ]
 
 // ---- Peinados (capa de pelo, [fila, col]) ----
@@ -136,8 +146,19 @@ const MOUTHS = {
 }
 
 export default function Avatar({ avatar, equipped = {}, size = 120, mood = 'happy' }) {
+  const { body = 'a' } = avatar || {}
+  if (IMAGE_BODIES[body]) {
+    const h = size * 19 / 14
+    return (
+      <div style={{ width: size, height: h, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        aria-label="avatar">
+        <img src={IMAGE_BODIES[body]} alt="" width={size} height={size}
+          style={{ imageRendering: 'pixelated', maxHeight: '100%', objectFit: 'contain' }} />
+      </div>
+    )
+  }
   const {
-    skin = SKINS[0], hair = HAIRS[1], shirt = SHIRTS[0], body = 'a',
+    skin = SKINS[0], hair = HAIRS[1], shirt = SHIRTS[0],
     hairStyle = 'clasico', pants = PANTS[0], shoes = SHOES[0], eye = EYES[0],
   } = avatar || {}
   const cmap = { s: skin, e: eye, b: shirt, p: pants, z: shoes }
