@@ -275,6 +275,7 @@ export default function App() {
 
   const screens = {
     home: <Home profile={profile} lvl={lvl} stk={stk} goals={goals} mood={mood} banners={banners}
+      groups={groups}
       pendingRedeem={pendingRedeem}
       onGoal={g => setView({ name: 'goal', id: g.id })}
       onRedeem={g => setView({ name: 'redeem', id: g.id })}
@@ -564,13 +565,14 @@ function AuthScreen({ onNotify, toast, theme }) {
 }
 
 // ---------- Inicio ----------
-function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingRedeem, onGoal, onRedeem, onNew, onStore }) {
+function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], groups = [], pendingRedeem, onGoal, onRedeem, onNew, onStore }) {
   const active = goals.filter(g => g.status === 'active')
   const dots = weekDots(goals)
   const shields = profile.avatar?.shields ?? 1
   const coins = profile.avatar?.coins || 0
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
   const coverBanner = banners.find(b => b.id === profile.avatar?.cover)
+  const company = groups.find(g => g.businessName)
   return (
     <>
       <Cover id={coverById(profile.avatar?.cover).id} image={coverBanner?.image} greeting={`Hola, ${profile.name}`} sub="Gamifica tu vida" />
@@ -580,6 +582,7 @@ function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], pendingR
         <div className="grow">
           <h1>{profile.name}</h1>
           <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
+          {company && <CompanyBadge name={company.businessName} logo={company.businessLogo} />}
           <div className="spacer" />
           <Bar frac={lvl.progress} />
           <div className="muted small">
