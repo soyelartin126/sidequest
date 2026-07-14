@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { ItemSprite } from './Avatar.jsx'
 import { Bar, TierBadge, IconGlyph } from './ui.jsx'
 import {
-  goalTarget, isPermanent, itemById, canCheckinToday, goalDays, XP_CHECKIN,
+  goalTarget, goalProgress, isPermanent, itemById, canCheckinToday, goalDays, XP_CHECKIN,
   ICONS, SKILLS, MAX_SKILLS_PER_GOAL, tierForDays, DURATIONS, TIERS, eligibleLoot,
 } from './game.js'
 
 export function GoalCard({ g, onClick }) {
   const t = goalTarget(g)
-  const done = g.checkins.length
-  const perm = isPermanent(g)
+  const done = goalProgress(g)
+  const perm = g.kind !== 'numero' && isPermanent(g)
   const reward = g.rewardItem && itemById(g.rewardItem)
   return (
     <div className="card" onClick={onClick} style={{ cursor: 'pointer' }}>
@@ -23,7 +23,7 @@ export function GoalCard({ g, onClick }) {
             : <div className="muted small">{g.questId ? 'Reto grupal · ' : 'Objetivo personal · '}
                 {perm ? <span className="chip" style={{ background: '#3582DB', color: '#fff' }}>♾ Permanente</span> : <TierBadge weeks={g.weeks} />}</div>}
         </div>
-        <b>{perm ? `${done} ♾` : `${done}/${t}`}</b>
+        <b>{perm ? `${done} ♾` : g.kind === 'numero' ? `${done}/${t} ${g.unitLabel || ''}` : `${done}/${t}`}</b>
       </div>
       <div className="spacer" />
       {!perm && <Bar frac={done / t} />}
@@ -58,10 +58,12 @@ export function Goals({ goals, onGoal, onNew }) {
       <h2>Completadas ({completed.length})</h2>
       {completed.map(g => (
         <div key={g.id} className="card flat row" onClick={() => onGoal(g)} style={{ cursor: 'pointer' }}>
-          <span style={{ fontSize: 22 }}>🏅</span>
+          <span style={{ fontSize: 22 }}>{g.kind === 'reconocimiento' ? '🏆' : '🏅'}</span>
           <div className="grow">
             <b>{g.title}</b>
-            <div className="muted small">{g.sponsor ? `Reto de ${g.sponsor}` : 'Objetivo personal'}</div>
+            <div className="muted small">
+              {g.kind === 'reconocimiento' ? 'Reconocimiento' : g.sponsor ? `Reto de ${g.sponsor}` : 'Objetivo personal'}
+            </div>
           </div>
         </div>
       ))}
@@ -205,42 +207,59 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
 export function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
   const [note, setNote] = useState('')
   const [file, setFile] = useState(null)
+  const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
+  const isNumero = g.kind === 'numero'
   const t = goalTarget(g)
-  const perm = isPermanent(g)
+  const perm = !isNumero && isPermanent(g)
   const can = canCheckinToday(g)
+  const done = goalProgress(g)
   return (
     <>
       <div className="topbar">
         <button className="sec mini" onClick={onBack}>← Volver</button>
         <h1 style={{ fontSize: 18 }}>{g.title}</h1>
       </div>
-      <div className="card">
-        {g.sponsor && <span className="chip prim">Reto de {g.sponsor}</span>}
-        {g.prize && <span className="chip">🎁 {g.prize}</span>}
-        {perm && <span className="chip" style={{ background: '#3582DB', color: '#fff' }}>♾ Permanente</span>}
-        <div className="spacer" />
-        {perm ? (
-          <div className="muted small">{g.checkins.length} check-ins · {g.freqPerWeek === 7 ? 'todos los días' : `${g.freqPerWeek}x por semana`} · sin fecha de término</div>
-        ) : (
-          <>
-            <Bar frac={g.checkins.length / t} />
-            <div className="muted small">{g.checkins.length} de {t} check-ins · {g.freqPerWeek}x por semana · {goalDays(g)} días</div>
-          </>
-        )}
-      </div>
+      {g.kind !== 'reconocimiento' && (
+        <div className="card">
+          {g.sponsor && <span className="chip prim">Reto de {g.sponsor}</span>}
+          {g.prize && <span className="chip">🎁 {g.prize}</span>}
+          {perm && <span className="chip" style={{ background: '#3582DB', color: '#fff' }}>♾ Permanente</span>}
+          <div className="spacer" />
+          {perm ? (
+            <div className="muted small">{done} check-ins · {g.freqPerWeek === 7 ? 'todos los días' : `${g.freqPerWeek}x por semana`} · sin fecha de término</div>
+          ) : isNumero ? (
+            <>
+              <Bar frac={done / t} />
+              <div className="muted small">{done} de {t} {g.unitLabel || ''}</div>
+            </>
+          ) : (
+            <>
+              <Bar frac={done / t} />
+              <div className="muted small">{done} de {t} check-ins · {g.freqPerWeek}x por semana · {goalDays(g)} días</div>
+            </>
+          )}
+        </div>
+      )}
 
       {g.status === 'completed' ? (
         <div className="card center">
-          <h3>🏆 ¡Misión completada!</h3>
+          <h3>🏆 {g.kind === 'reconocimiento' ? '¡Felicitaciones!' : '¡Misión completada!'}</h3>
+          {g.prize && <p className="muted">{g.prize}</p>}
           {g.redeemCode && !g.redeemed && <button className="acc" onClick={onRedeem}>Ver mi canje</button>}
           {g.redeemed && <p className="muted">Premio ya canjeado. ¡A por la próxima!</p>}
         </div>
       ) : (
         <div className="card">
-          <h3>Check-in de hoy</h3>
+          <h3>{isNumero ? `Reporta tu avance de hoy` : 'Check-in de hoy'}</h3>
           {can ? (
             <>
+              {isNumero && (
+                <>
+                  <label className="muted small">{g.unitLabel ? `Cantidad de ${g.unitLabel} hoy` : 'Cantidad de hoy'}</label>
+                  <input type="number" min="0" value={value} onChange={e => setValue(e.target.value)} placeholder="0" />
+                </>
+              )}
               <input value={note} onChange={e => setNote(e.target.value)}
                 placeholder="Nota opcional (¿cómo te fue?)" maxLength={80} />
               <label className="muted small">Foto de evidencia (opcional)</label>
@@ -248,8 +267,8 @@ export function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
                 onChange={e => setFile(e.target.files?.[0] || null)} />
               <button disabled={busy} onClick={async () => {
                 setBusy(true)
-                await onCheckin(g, note, file)
-                setNote(''); setFile(null); setBusy(false)
+                await onCheckin(g, note, file, isNumero ? (+value || 0) : null)
+                setNote(''); setFile(null); setValue(''); setBusy(false)
               }}>
                 {busy ? 'Guardando…' : `✔ Reportar avance (+${XP_CHECKIN} XP)`}
               </button>
@@ -265,7 +284,7 @@ export function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
           <div key={i} className="hist">
             {c.photo ? <img className="photo-thumb" src={c.photo} alt="" /> : <span style={{ fontSize: 20 }}>✔</span>}
             <div className="grow">
-              <b>{c.day}</b>
+              <b>{c.day}{isNumero ? ` · ${c.value || 0} ${g.unitLabel || ''}` : ''}</b>
               {c.note && <div className="muted small">{c.note}</div>}
             </div>
             <span className="muted small">+{XP_CHECKIN} XP</span>

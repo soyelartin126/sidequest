@@ -17,7 +17,7 @@ Deno.serve(async () => {
 
   const { data: goals, error } = await sb
     .from('goals')
-    .select('user_id, title, meta, checkins(day)')
+    .select('user_id, title, meta, kind, target_number, unit_label, checkins(day, value)')
     .eq('status', 'active')
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 })
@@ -27,7 +27,11 @@ Deno.serve(async () => {
     const doneToday = (g.checkins || []).some(c => c.day === today)
     if (doneToday) continue
     const list = pendingByUser.get(g.user_id) || []
-    list.push({ title: g.title, icon: g.meta?.icon || '🎯' })
+    const progress = (g.checkins || []).reduce((sum, c) => sum + (Number(c.value) || 0), 0)
+    list.push({
+      title: g.title, icon: g.meta?.icon || '🎯',
+      subtitle: g.kind === 'numero' ? `Vas en ${progress}/${g.target_number} ${g.unit_label || ''}` : null,
+    })
     pendingByUser.set(g.user_id, list)
   }
 
@@ -45,7 +49,9 @@ Deno.serve(async () => {
           <div style="width:48px; height:48px; line-height:48px; text-align:center;
             border-radius:12px; background:#F1F3F5; font-size:26px;">${g.icon}</div>
         </td>
-        <td style="padding:6px 0; font-size:15px; color:#16263F;">${g.title}</td>
+        <td style="padding:6px 0; font-size:15px; color:#16263F;">
+          ${g.title}${g.subtitle ? `<div style="font-size:13px; color:#5B6B82;">${g.subtitle}</div>` : ''}
+        </td>
       </tr>
     `).join('')
 

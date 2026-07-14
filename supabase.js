@@ -19,9 +19,11 @@ const rowToGoal = r => ({
   rewardItem: r.reward_item, status: r.status, questId: r.quest_id,
   redeemCode: r.redeem_code, redeemed: r.redeemed, userId: r.user_id,
   icon: r.meta?.icon || null, skills: r.meta?.skills || [],
+  kind: r.kind || 'constancia', targetNumber: r.target_number ?? null, unitLabel: r.unit_label || '',
+  awardedTo: r.awarded_to || null, awardedAt: r.awarded_at || null,
   checkins: (r.checkins || [])
     .sort((a, b) => a.day.localeCompare(b.day))
-    .map(c => ({ day: c.day, note: c.note || '', photo: c.photo_url || null })),
+    .map(c => ({ day: c.day, note: c.note || '', photo: c.photo_url || null, value: c.value ?? null })),
 })
 
 const rowToQuest = r => ({
@@ -31,6 +33,8 @@ const rowToQuest = r => ({
   icon: r.meta?.icon || null, skills: r.meta?.skills || [],
   businessId: r.business_id, comuna: r.comuna || [], capacity: r.capacity ?? null,
   startsAt: r.starts_at, endsAt: r.ends_at,
+  kind: r.kind || 'constancia', targetNumber: r.target_number ?? null, unitLabel: r.unit_label || '',
+  awardedTo: r.awarded_to || null, awardedAt: r.awarded_at || null,
 })
 
 // ---------- auth ----------
@@ -106,12 +110,14 @@ export const insertGoal = (userId, g) => sb.from('goals').insert({
   image_url: g.image || null, freq_per_week: g.freqPerWeek, weeks: g.weeks,
   reward_item: g.rewardItem || null, quest_id: g.questId || null,
   meta: { icon: g.icon || null, skills: g.skills || [] },
+  kind: g.kind || 'constancia', target_number: g.targetNumber || null, unit_label: g.unitLabel || null,
 }).select().single()
 
 export const deleteGoal = id => sb.from('goals').delete().eq('id', id)
 
 export const insertCheckin = (userId, goalId, c) => sb.from('checkins').insert({
   user_id: userId, goal_id: goalId, day: c.day, note: c.note || null, photo_url: c.photo || null,
+  value: c.value ?? null,
 })
 
 export const completeGoal = g => sb.from('goals').update({
@@ -128,7 +134,17 @@ export const insertQuest = (userId, q) => sb.from('quests').insert({
   meta: { icon: q.icon || null, skills: q.skills || [] },
   business_id: q.businessId || null, comuna: q.comuna?.length ? q.comuna : null,
   capacity: q.capacity || null, starts_at: q.startsAt || null, ends_at: q.endsAt || null,
-})
+  kind: q.kind || 'constancia', target_number: q.targetNumber || null, unit_label: q.unitLabel || null,
+}).select().single()
+
+export const awardRecognition = (questId, userId) =>
+  sb.rpc('award_recognition', { p_quest_id: questId, p_user_id: userId })
+
+export const sendTeamInvite = inviteId =>
+  sb.functions.invoke('send-team-invite', { body: { inviteId } })
+
+export const notifyNewQuest = questId =>
+  sb.functions.invoke('notify-new-quest', { body: { questId } })
 
 export const setQuestActive = (id, active) => sb.from('quests').update({ active }).eq('id', id)
 
@@ -178,7 +194,7 @@ export const fetchCompanyInvites = groupId => sb.from('company_invites')
   .select('id, email, invited_at, joined_user_id').eq('group_id', groupId).order('invited_at')
 
 export const addCompanyInvite = (groupId, email) => sb.from('company_invites')
-  .insert({ group_id: groupId, email: email.trim().toLowerCase() })
+  .insert({ group_id: groupId, email: email.trim().toLowerCase() }).select()
 
 export const removeCompanyInvite = id => sb.from('company_invites').delete().eq('id', id)
 
@@ -189,7 +205,7 @@ export const fetchQuestJoinCounts = questIds => sb.rpc('quest_join_counts', { qu
 
 // progreso de los miembros en los retos de un grupo
 export const fetchQuestGoals = questIds => sb.from('goals')
-  .select('user_id, quest_id, status, checkins(day)').in('quest_id', questIds)
+  .select('user_id, quest_id, status, checkins(day, value)').in('quest_id', questIds)
 
 // ---------- admin (ve todo gracias a las policies) ----------
 export async function fetchAdminData() {

@@ -5,11 +5,12 @@ import Admin from './Admin.jsx'
 import Profile from './Profile.jsx'
 import BusinessHome from './BusinessHome.jsx'
 import { GoalCard, Goals, NewGoal, GoalDetail } from './Goals.jsx'
+import { Groups, GroupDetail } from './Groups.jsx'
 import { Bar, Pwd, IconGlyph, Backdrop, CompanyBadge } from './ui.jsx'
 import { resizePhoto } from './utils.js'
 import {
-  levelFor, streak, weekDots, goalTarget, canCheckinToday, dayKey,
-  makeRedeemCode, ITEMS, earnedItems, itemById, isPermanent,
+  levelFor, streak, weekDots, goalTarget, goalProgress, canCheckinToday, dayKey,
+  makeRedeemCode, ITEMS, earnedItems, itemById, isPermanent, THEMES,
   XP_CHECKIN, XP_GOAL_COMPLETE, XP_QUEST_COMPLETE,
   applyShields, addShield, SHIELD_CAP, backgroundStyle, INTERESTS,
   COIN_CHECKIN, COIN_GOAL, COIN_QUEST, WELCOME_COINS, itemPrice, COVER_PRICE,
@@ -22,8 +23,6 @@ function moodOf(goals, stk, bestStreak) {
   if (goals.some(g => canCheckinToday(g))) return 'neutral'
   return 'happy'
 }
-
-const THEMES = ['Familia', 'Trabajo', 'Amigos', 'Estudio', 'Deporte', 'Otro']
 
 // ---------- Onboarding: bienvenida + intereses + misiones sugeridas ----------
 function Onboarding({ profile, onFinish }) {
@@ -227,17 +226,17 @@ export default function App() {
     </div>
   )
 
-  const doCheckin = async (goal, note, photoFile) => {
+  const doCheckin = async (goal, note, photoFile, value) => {
     if (!canCheckinToday(goal)) return
     const photo = photoFile ? await resizePhoto(photoFile) : null
-    await db.insertCheckin(profile.id, goal.id, { day: dayKey(), note, photo })
+    await db.insertCheckin(profile.id, goal.id, { day: dayKey(), note, photo, value })
     const p = { ...profile, xp: profile.xp + XP_CHECKIN }
     p.avatar = { ...(profile.avatar || {}), coins: (profile.avatar?.coins || 0) + COIN_CHECKIN }
+    const patchedGoals = goals.map(x => x.id === goal.id
+      ? { ...x, checkins: [...x.checkins, { day: dayKey(), note, photo, value }] } : x)
     const skillMilestones = []
     if (goal.skills?.length > 0) {
       const skillsXp = { ...(p.avatar.skills || {}) }
-      const patchedGoals = goals.map(x => x.id === goal.id
-        ? { ...x, checkins: [...x.checkins, { day: dayKey(), note, photo }] } : x)
       goal.skills.forEach(sid => {
         skillsXp[sid] = (skillsXp[sid] || 0) + SKILL_XP_PER_CHECKIN
         const days = skillStreak(patchedGoals, sid)
@@ -246,7 +245,7 @@ export default function App() {
       p.avatar.skills = skillsXp
       if (skillMilestones.length > 0) p.avatar.coins = (p.avatar.coins || 0) + skillMilestones.length * SKILL_STREAK_BONUS_COINS
     }
-    const willComplete = goal.checkins.length + 1 >= goalTarget(goal)
+    const willComplete = goalProgress(patchedGoals.find(x => x.id === goal.id)) >= goalTarget(goal)
     if (willComplete) {
       p.xp += goal.sponsor ? XP_QUEST_COMPLETE : XP_GOAL_COMPLETE
       if (goal.rewardItem && !p.items.includes(goal.rewardItem)) p.items = [...p.items, goal.rewardItem]
@@ -758,233 +757,6 @@ function Credits({ onBack }) {
 }
 
 // ---------- Grupos ----------
-function Groups({ groups, profile, onOpen, onNotify, onChanged }) {
-  const [mode, setMode] = useState(null) // null | create | join
-  const [name, setName] = useState('')
-  const [theme, setTheme] = useState(THEMES[0])
-  const [code, setCode] = useState('')
-  const [busy, setBusy] = useState(false)
-  return (
-    <>
-      <h1>Grupos</h1>
-      <p className="muted">Familia, trabajo, amigos: retos temáticos compartidos y el avance de todos.</p>
-
-      {groups.map(g => (
-        <div key={g.id} className="card row" onClick={() => onOpen(g)} style={{ cursor: 'pointer' }}>
-          <IconGlyph icon="👥" size={26} />
-          <div className="grow">
-            <h3>{g.name}</h3>
-            <div className="muted small">{g.theme} · {g.members.length} {g.members.length === 1 ? 'miembro' : 'miembros'}</div>
-            {g.businessName && <CompanyBadge name={g.businessName} logo={g.businessLogo} />}
-          </div>
-          {(g.myRole === 'admin' || g.ownerId === profile.id) && <span className="chip">admin</span>}
-        </div>
-      ))}
-      {groups.length === 0 && <div className="card center"><p className="muted">Aún no estás en ningún grupo.</p></div>}
-
-      {!mode && (
-        <>
-          <button onClick={() => setMode('create')}>+ Crear grupo</button>
-          <div className="spacer" />
-          <button className="sec" onClick={() => setMode('join')}>Unirme con un código</button>
-        </>
-      )}
-
-      {mode === 'create' && (
-        <div className="card">
-          <h3>Nuevo grupo</h3>
-          <label>Nombre</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Los Ortega" maxLength={30} />
-          <label>Tema</label>
-          <select value={theme} onChange={e => setTheme(e.target.value)}>
-            {THEMES.map(t => <option key={t}>{t}</option>)}
-          </select>
-          <button disabled={!name.trim() || busy} onClick={async () => {
-            setBusy(true)
-            const { error } = await db.createGroup(profile.id, name.trim(), theme)
-            setBusy(false)
-            if (error) onNotify(error.message)
-            else { onNotify('¡Grupo creado!'); setMode(null); setName(''); onChanged() }
-          }}>Crear grupo</button>
-          <div className="spacer" />
-          <button className="sec" onClick={() => setMode(null)}>Cancelar</button>
-        </div>
-      )}
-
-      {mode === 'join' && (
-        <div className="card">
-          <h3>Unirme a un grupo</h3>
-          <label>Código de invitación</label>
-          <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} />
-          <button disabled={code.length !== 6 || busy} onClick={async () => {
-            setBusy(true)
-            const { error } = await db.joinGroup(profile.id, code)
-            setBusy(false)
-            if (error) {
-              onNotify(error.message?.includes('not_invited')
-                ? 'Tu correo no está autorizado por esta empresa. Pídele al admin que te agregue.'
-                : 'Código no válido')
-            } else { onNotify('¡Bienvenido al grupo!'); setMode(null); setCode(''); onChanged() }
-          }}>Unirme</button>
-          <div className="spacer" />
-          <button className="sec" onClick={() => setMode(null)}>Cancelar</button>
-        </div>
-      )}
-    </>
-  )
-}
-
-function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onChanged }) {
-  const isAdmin = g.myRole === 'admin' || g.ownerId === profile.id
-  const joined = new Set(goals.map(x => x.questId).filter(Boolean))
-  const [form, setForm] = useState(null)
-  const [progress, setProgress] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const [invites, setInvites] = useState(null)
-  const [newEmail, setNewEmail] = useState('')
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-
-  useEffect(() => {
-    const ids = quests.map(q => q.id)
-    if (ids.length === 0) { setProgress({}); return }
-    db.fetchQuestGoals(ids).then(({ data }) => {
-      const by = {}
-      for (const row of data || []) {
-        by[row.quest_id] = by[row.quest_id] || []
-        by[row.quest_id].push({ userId: row.user_id, count: (row.checkins || []).length, status: row.status })
-      }
-      setProgress(by)
-    })
-  }, [quests.length])
-
-  useEffect(() => {
-    if (!isAdmin || !g.businessId) return
-    db.fetchCompanyInvites(g.id).then(({ data }) => setInvites(data || []))
-  }, [g.id, g.businessId, isAdmin])
-
-  const nameOf = id => g.members.find(m => m.id === id)?.name || '—'
-
-  return (
-    <>
-      <div className="topbar">
-        <button className="sec mini" onClick={onBack}>← Volver</button>
-        <h1>{g.name}</h1>
-      </div>
-      {g.businessName && <CompanyBadge name={g.businessName} logo={g.businessLogo} size={20} />}
-
-      <div className="card">
-        <div className="muted small">Tema: {g.theme} · Código de invitación:</div>
-        <div className="code" style={{ fontSize: 22, letterSpacing: 4 }}>{g.inviteCode}</div>
-        <div className="muted small">
-          {g.businessId
-            ? 'Compártelo con tu equipo: solo los correos que autorices abajo podrán usarlo.'
-            : 'Compártelo para que se unan al grupo.'}
-        </div>
-      </div>
-
-      {isAdmin && g.businessId && (
-        <>
-          <h2>Equipo autorizado</h2>
-          <div className="card flat">
-            {invites === null && <p className="muted small">Cargando…</p>}
-            {invites?.length === 0 && <p className="muted small">Aún no agregas correos. Nadie puede unirse todavía.</p>}
-            {invites?.map(inv => (
-              <div key={inv.id} className="hist">
-                <IconGlyph icon="✉️" size={18} />
-                <div className="grow">
-                  <b>{inv.email}</b>
-                  {inv.joined_user_id && <span className="muted small"> · ya se unió</span>}
-                </div>
-                <button className="mini sec" onClick={async () => {
-                  await db.removeCompanyInvite(inv.id)
-                  setInvites(list => list.filter(x => x.id !== inv.id))
-                }}>Quitar</button>
-              </div>
-            ))}
-          </div>
-          <div className="card">
-            <label>Agregar correo al equipo</label>
-            <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="persona@empresa.com" />
-            <button disabled={!newEmail.includes('@') || busy} onClick={async () => {
-              setBusy(true)
-              const { error } = await db.addCompanyInvite(g.id, newEmail)
-              setBusy(false)
-              if (error) onNotify(error.message.includes('duplicate') ? 'Ese correo ya está autorizado' : error.message)
-              else {
-                setNewEmail('')
-                db.fetchCompanyInvites(g.id).then(({ data }) => setInvites(data || []))
-              }
-            }}>+ Agregar</button>
-          </div>
-        </>
-      )}
-
-      <h2>Miembros ({g.members.length})</h2>
-      <div className="card flat">
-        {g.members.map(m => (
-          <div key={m.id} className="hist">
-            <IconGlyph icon="👤" size={18} />
-            <div className="grow"><b>{m.name}</b></div>
-            {m.role === 'admin' && <span className="chip">admin</span>}
-          </div>
-        ))}
-      </div>
-
-      <h2>Retos del grupo</h2>
-      {quests.length === 0 && <p className="muted">Aún no hay retos. {isAdmin ? 'Crea el primero.' : 'El admin puede crearlos.'}</p>}
-      {quests.filter(q => q.active).map(q => {
-        const rows = (progress?.[q.id] || [])
-        const target = Math.max(1, Math.round(q.freqPerWeek * q.weeks))
-        return (
-          <div key={q.id} className="card">
-            <h3>{q.title}</h3>
-            <div className="muted small">{q.freqPerWeek}x/semana · {q.weeks} semanas · meta {target} check-ins</div>
-            <div className="spacer" />
-            {rows.length === 0 && <p className="muted small">Nadie se ha unido todavía.</p>}
-            {rows.map((r, i) => (
-              <div key={i} className="hist">
-                <div className="grow"><b>{nameOf(r.userId)}</b></div>
-                <div style={{ width: 130 }}><Bar frac={r.count / target} /></div>
-                <span className="muted small">{r.status === 'completed' ? '🏆' : `${r.count}/${target}`}</span>
-              </div>
-            ))}
-            <div className="spacer" />
-            <button disabled={joined.has(q.id) || busy} onClick={async () => {
-              setBusy(true)
-              await db.insertGoal(profile.id, { title: q.title, icon: q.icon, freqPerWeek: q.freqPerWeek, weeks: q.weeks, questId: q.id })
-              setBusy(false); onNotify('¡Te uniste al reto del grupo!'); onChanged()
-            }}>
-              {joined.has(q.id) ? 'Ya estás en este reto' : 'Unirme al reto'}
-            </button>
-          </div>
-        )
-      })}
-
-      {isAdmin && !form && <button onClick={() => setForm({ title: '', freqPerWeek: 3, weeks: 2 })}>+ Nuevo reto del grupo</button>}
-      {form && (
-        <div className="card">
-          <h3>Nuevo reto para {g.name}</h3>
-          <label>Título</label>
-          <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Ej: Todos al gym 3x esta semana" maxLength={60} />
-          <label>Veces por semana: {form.freqPerWeek}</label>
-          <input type="range" min="1" max="7" value={form.freqPerWeek} onChange={e => set('freqPerWeek', +e.target.value)} />
-          <label>Semanas: {form.weeks}</label>
-          <input type="range" min="1" max="8" value={form.weeks} onChange={e => set('weeks', +e.target.value)} />
-          <button disabled={!form.title.trim() || busy} onClick={async () => {
-            setBusy(true)
-            const { error } = await db.insertQuest(profile.id, { ...form, groupId: g.id })
-            setBusy(false)
-            if (error) onNotify(error.message)
-            else { onNotify('¡Reto publicado al grupo!'); setForm(null); onChanged() }
-          }}>Publicar reto</button>
-          <div className="spacer" />
-          <button className="sec" onClick={() => setForm(null)}>Cancelar</button>
-        </div>
-      )}
-    </>
-  )
-}
-
 // ---------- Tienda (comprar con monedas) ----------
 function Store({ profile, lvl, earned, banners = [], onBack, onBuy }) {
   const coins = profile.avatar?.coins || 0

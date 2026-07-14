@@ -1,5 +1,7 @@
 // ---- Motor de juego: XP, niveles, rachas, tiers y objetos ----
 
+export const THEMES = ['Familia', 'Trabajo', 'Amigos', 'Estudio', 'Deporte', 'Otro']
+
 export const XP_CHECKIN = 10
 export const XP_GOAL_COMPLETE = 60
 export const XP_QUEST_COMPLETE = 100
@@ -153,7 +155,16 @@ export function weekDots(goals) {
 
 // un reto permanente no tiene fin (weeks 0): suma XP y racha, nunca "se completa"
 export const isPermanent = g => !g.weeks || g.weeks <= 0
-export const goalTarget = g => (isPermanent(g) ? Infinity : Math.max(1, Math.round(g.freqPerWeek * g.weeks)))
+
+// progreso segun el tipo de reto: "numero" suma los valores reportados,
+// el resto cuenta dias de check-in
+export const goalProgress = g => g.kind === 'numero'
+  ? g.checkins.reduce((sum, c) => sum + (Number(c.value) || 0), 0)
+  : g.checkins.length
+
+export const goalTarget = g => g.kind === 'numero'
+  ? (g.targetNumber || Infinity)
+  : (isPermanent(g) ? Infinity : Math.max(1, Math.round(g.freqPerWeek * g.weeks)))
 export const goalDays = g => Math.round((g.weeks || 0) * 7)
 
 export function canCheckinToday(g) {
