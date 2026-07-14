@@ -47,7 +47,7 @@ export function CompanyBadge({ name, logo, size = 16 }) {
     <span className="chip company-badge" title={name}>
       {logo
         ? <img src={logo} alt="" style={{ width: size, height: size, objectFit: 'contain', borderRadius: 3 }} />
-        : '🏢'}
+        : <IconGlyph icon="🏢" size={size} />}
       {name}
     </span>
   )

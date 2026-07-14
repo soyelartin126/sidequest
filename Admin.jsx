@@ -3,8 +3,9 @@ import * as db from './supabase.js'
 import { resizePhoto } from './utils.js'
 import { ICONS, SKILLS, MAX_SKILLS_PER_GOAL } from './game.js'
 import { IconGlyph } from './ui.jsx'
+import { COVERS, CoverThumb } from './Avatar.jsx'
 
-export default function Admin({ quests, profile, banners = [], onBack, onNotify, onChanged }) {
+export default function Admin({ quests, profile, banners = [], levelCovers = {}, onBack, onNotify, onChanged }) {
   const empty = {
     title: '', sponsor: '', prize: '', icon: ICONS[0], skills: [], freqPerWeek: 3, weeks: 4, image: null,
     scope: 'nacional', comuna: '', capacity: '', startsAt: '', endsAt: '', businessId: '',
@@ -144,13 +145,41 @@ export default function Admin({ quests, profile, banners = [], onBack, onNotify,
         </div>
       )}
 
+      <h2>Portadas por nivel</h2>
+      <p className="muted small">
+        Reemplaza el dibujo de cada portada por una foto real. Mientras una no tenga
+        foto subida, se sigue mostrando el dibujo como respaldo.
+      </p>
+      {COVERS.map(c => (
+        <div key={c.id} className="card flat row">
+          <div style={{ width: 78, height: 48, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+            <CoverThumb id={c.id} image={levelCovers[c.id]} />
+          </div>
+          <div className="grow">
+            <b>{c.name}</b>
+            <div className="muted small">Nivel {c.minLevel}+{levelCovers[c.id] ? ' · foto subida' : ' · usando dibujo'}</div>
+          </div>
+          <label className="mini sec" style={{ cursor: 'pointer' }}>
+            Subir foto
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              const img = await resizePhoto(f, 800)
+              const { error } = await db.upsertLevelCover(c.id, img)
+              if (error) onNotify(error.message)
+              else onChanged()
+            }} />
+          </label>
+        </div>
+      ))}
+
       <h2>Portadas de la tienda</h2>
       {banners.map(b => (
         <div key={b.id} className="card flat row">
           <div style={{ width: 78, height: 48, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
             <img src={b.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
-          <div className="grow"><b>{b.name || 'Banner'}</b><div className="muted small">🪙 {b.price}</div></div>
+          <div className="grow"><b>{b.name || 'Banner'}</b><div className="muted small"><IconGlyph icon="🪙" size={14} /> {b.price}</div></div>
           <button className="mini sec" onClick={async () => { await db.deleteStoreItem(b.id); onChanged() }}>Quitar</button>
         </div>
       ))}

@@ -1,8 +1,9 @@
 import { ItemSprite, CoverThumb, COVERS } from './Avatar.jsx'
+import { IconGlyph } from './ui.jsx'
 import { ITEMS, itemPrice, COVER_PRICE } from './game.js'
 
 // ---------- Tienda (comprar con monedas) ----------
-export function Store({ profile, lvl, earned, banners = [], onBack, onBuy }) {
+export function Store({ profile, lvl, earned, banners = [], levelCovers = {}, onBack, onBuy }) {
   const coins = profile.avatar?.coins || 0
   const ownedCovers = profile.avatar?.ownedCovers || []
   const loot = ITEMS.filter(it => it.kind === 'loot')
@@ -13,7 +14,7 @@ export function Store({ profile, lvl, earned, banners = [], onBack, onBuy }) {
         <h1>Tienda</h1>
       </div>
       <div className="card center">
-        <div style={{ fontSize: 28, fontWeight: 800, color: '#8A5A00' }}>🪙 {coins}</div>
+        <div style={{ fontSize: 28, fontWeight: 800, color: '#8A5A00' }}><IconGlyph icon="🪙" size={22} /> {coins}</div>
         <div className="muted small">Ganas monedas con cada check-in y misión completada</div>
       </div>
 
@@ -29,7 +30,7 @@ export function Store({ profile, lvl, earned, banners = [], onBack, onBuy }) {
               {owned
                 ? <div className="muted small">✔ Tienes</div>
                 : <button className="mini" style={{ marginTop: 6 }} disabled={coins < price}
-                    onClick={() => onBuy('item', it.id, price)}>🪙 {price}</button>}
+                    onClick={() => onBuy('item', it.id, price)}><IconGlyph icon="🪙" size={14} /> {price}</button>}
             </div>
           )
         })}
@@ -41,11 +42,11 @@ export function Store({ profile, lvl, earned, banners = [], onBack, onBuy }) {
           const avail = lvl.level >= c.minLevel || ownedCovers.includes(c.id)
           return (
             <div key={c.id} className="cover-opt">
-              <div className="cover-thumb"><CoverThumb id={c.id} /></div>
+              <div className="cover-thumb"><CoverThumb id={c.id} image={levelCovers[c.id]} /></div>
               {avail
                 ? <div className="bg-nm">{lvl.level >= c.minLevel ? `Nv ${c.minLevel}` : 'Comprada ✔'}</div>
                 : <button className="mini" style={{ marginTop: 4, padding: '5px 8px', fontSize: 11, width: '100%' }}
-                    disabled={coins < COVER_PRICE} onClick={() => onBuy('cover', c.id, COVER_PRICE)}>🪙 {COVER_PRICE}</button>}
+                    disabled={coins < COVER_PRICE} onClick={() => onBuy('cover', c.id, COVER_PRICE)}><IconGlyph icon="🪙" size={14} /> {COVER_PRICE}</button>}
             </div>
           )
         })}
@@ -57,7 +58,7 @@ export function Store({ profile, lvl, earned, banners = [], onBack, onBuy }) {
               {owned
                 ? <div className="bg-nm">Comprada ✔</div>
                 : <button className="mini" style={{ marginTop: 4, padding: '5px 8px', fontSize: 11, width: '100%' }}
-                    disabled={coins < b.price} onClick={() => onBuy('cover', b.id, b.price)}>🪙 {b.price}</button>}
+                    disabled={coins < b.price} onClick={() => onBuy('cover', b.id, b.price)}><IconGlyph icon="🪙" size={14} /> {b.price}</button>}
             </div>
           )
         })}

@@ -19,7 +19,7 @@ export function SkillCard({ skill, xp, streakDays }) {
   )
 }
 
-function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], groups = [], theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onCredits, onLogout }) {
+function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], groups = [], levelCovers = {}, theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onCredits, onLogout }) {
   const [editing, setEditing] = useState(false)
   const completed = goals.filter(g => g.status === 'completed').length
   const company = groups.find(g => g.businessName)
@@ -58,7 +58,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], gr
         </div>
         <div className="spacer" />
         <button className="sec mini" onClick={() => setEditing(e => !e)}>
-          {editing ? 'Listo' : '✏️ Editar personaje'}
+          {editing ? 'Listo' : <><IconGlyph icon="✏️" size={16} /> Editar personaje</>}
         </button>
       </div>
 
@@ -115,8 +115,8 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], gr
             return (
               <div key={c.id} className={'cover-opt' + (curCover === c.id ? ' sel' : '') + (locked ? ' locked' : '')}
                 onClick={() => !locked && onAvatar({ ...profile.avatar, cover: c.id })}>
-                <div className="cover-thumb"><CoverThumb id={c.id} /></div>
-                <div className="bg-nm">{locked ? `🔒 Nv ${c.minLevel}` : c.name}</div>
+                <div className="cover-thumb"><CoverThumb id={c.id} image={levelCovers[c.id]} /></div>
+                <div className="bg-nm">{locked ? <><IconGlyph icon="🔒" size={13} /> Nv {c.minLevel}</> : c.name}</div>
               </div>
             )
           })}
@@ -150,7 +150,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], gr
                     title={it.desc} onClick={() => has && onEquip(it)}>
                     <ItemSprite id={it.id} />
                     <div className="nm">{it.name}</div>
-                    {!has && <div className="muted small">🔒 {it.reqCheckins}✔</div>}
+                    {!has && <div className="muted small"><IconGlyph icon="🔒" size={13} /> {it.reqCheckins}✔</div>}
                     {eq && <div className="muted small">puesto</div>}
                   </div>
                 )
@@ -169,7 +169,7 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], gr
               title={it.desc} onClick={() => has && onEquip(it)}>
               <ItemSprite id={it.id} />
               <div className="nm">{it.name}</div>
-              {!has && <div className="muted small">🔒</div>}
+              {!has && <div className="muted small"><IconGlyph icon="🔒" size={13} /></div>}
               {eq && <div className="muted small">puesto</div>}
             </div>
           )

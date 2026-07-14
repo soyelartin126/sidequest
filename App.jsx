@@ -93,7 +93,7 @@ export default function App() {
   if (!session) return <AuthScreen onNotify={notify} toast={toast} theme={theme} />
   if (!data) return <div className="app center"><div className="logo">LevelApp</div><p className="muted">Cargando tu aventura…</p></div>
 
-  const { profile, goals, quests, groups, banners = [], myBusinesses = [] } = data
+  const { profile, goals, quests, groups, banners = [], myBusinesses = [], levelCovers = {} } = data
   const lvl = levelFor(profile.xp)
   const stk = streak(goals, profile.avatar?.frozenDays || [])
   const earned = earnedItems(data)
@@ -163,7 +163,7 @@ export default function App() {
 
   const screens = {
     home: <Home profile={profile} lvl={lvl} stk={stk} goals={goals} mood={mood} banners={banners}
-      groups={groups}
+      groups={groups} levelCovers={levelCovers}
       pendingRedeem={pendingRedeem}
       onGoal={g => setView({ name: 'goal', id: g.id })}
       onRedeem={g => setView({ name: 'redeem', id: g.id })}
@@ -183,7 +183,7 @@ export default function App() {
       onOpen={g => setView({ name: 'group', id: g.id })}
       onChanged={() => refresh()} />,
     profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals} mood={mood} banners={banners}
-      groups={groups}
+      groups={groups} levelCovers={levelCovers}
       theme={theme} onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
       onAvatar={async av => { await db.saveProfile({ ...profile, avatar: av }); refresh() }}
       onEquip={async item => {
@@ -227,12 +227,12 @@ export default function App() {
       quests={quests.filter(q => q.groupId === g.id)}
       onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
   } else if (view?.name === 'admin') {
-    overlay = <Admin quests={quests.filter(q => !q.groupId)} profile={profile} banners={banners}
+    overlay = <Admin quests={quests.filter(q => !q.groupId)} profile={profile} banners={banners} levelCovers={levelCovers}
       onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
   } else if (view?.name === 'credits') {
     overlay = <Credits onBack={() => setView(null)} />
   } else if (view?.name === 'store') {
-    overlay = <Store profile={profile} lvl={lvl} earned={earned} banners={banners} onBack={() => setView(null)}
+    overlay = <Store profile={profile} lvl={lvl} earned={earned} banners={banners} levelCovers={levelCovers} onBack={() => setView(null)}
       onBuy={async (kind, id, price) => {
         const coins = profile.avatar?.coins || 0
         if (coins < price) { notify('No te alcanzan las monedas'); return }

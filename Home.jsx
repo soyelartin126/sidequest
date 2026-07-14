@@ -3,17 +3,18 @@ import Avatar, { Cover, Pet, PET_COLORS, coverById } from './Avatar.jsx'
 import { Bar, IconGlyph, CompanyBadge } from './ui.jsx'
 import { weekDots, SHIELD_CAP } from './game.js'
 
-export function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], groups = [], pendingRedeem, onGoal, onRedeem, onNew, onStore }) {
+export function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], groups = [], levelCovers = {}, pendingRedeem, onGoal, onRedeem, onNew, onStore }) {
   const active = goals.filter(g => g.status === 'active')
   const dots = weekDots(goals)
   const shields = profile.avatar?.shields ?? 1
   const coins = profile.avatar?.coins || 0
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
-  const coverBanner = banners.find(b => b.id === profile.avatar?.cover)
+  const coverId = coverById(profile.avatar?.cover).id
+  const coverImage = levelCovers[coverId] || banners.find(b => b.id === profile.avatar?.cover)?.image
   const company = groups.find(g => g.businessName)
   return (
     <>
-      <Cover id={coverById(profile.avatar?.cover).id} image={coverBanner?.image} greeting={`Hola, ${profile.name}`} sub="Gamifica tu vida" />
+      <Cover id={coverId} image={coverImage} greeting={`Hola, ${profile.name}`} sub="Gamifica tu vida" />
 
       <div className="card row lift">
         <Avatar avatar={profile.avatar} equipped={profile.equipped} size={110} animate />
@@ -30,8 +31,8 @@ export function Home({ profile, lvl, stk, goals, mood = 'happy', banners = [], g
       </div>
 
       <div className="coinbar">
-        <span className="chip" style={{ background: '#FFF0D6', color: '#8A5A00', fontSize: 14 }}>🪙 {coins} monedas</span>
-        <button className="mini acc" onClick={onStore}>🛍 Tienda</button>
+        <span className="chip" style={{ background: '#FFF0D6', color: '#8A5A00', fontSize: 14 }}><IconGlyph icon="🪙" size={16} /> {coins} monedas</span>
+        <button className="mini acc" onClick={onStore}><IconGlyph icon="🛍" size={16} /> Tienda</button>
       </div>
 
       <div className="card">

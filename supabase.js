@@ -57,13 +57,14 @@ export async function signUp({ email, password, name, phone, avatar }) {
 
 // ---------- carga de estado ----------
 export async function fetchState(userId) {
-  const [p, g, q, gm, si, mb] = await Promise.all([
+  const [p, g, q, gm, si, mb, lc] = await Promise.all([
     sb.from('profiles').select('*').eq('id', userId).single(),
     sb.from('goals').select('*, checkins(*)').eq('user_id', userId).order('created_at'),
     sb.from('quests').select('*').order('created_at'),
     sb.from('group_members').select('role, groups(*, businesses(id, name, logo_url))').eq('user_id', userId),
     sb.from('store_items').select('*').eq('active', true).order('created_at'),
     sb.from('businesses').select('id, name, logo_url').eq('owner_id', userId),
+    sb.from('level_covers').select('id, image_url'),
   ])
   if (p.error) return { error: p.error }
   const groups = []
@@ -91,12 +92,17 @@ export async function fetchState(userId) {
       id: r.id, name: r.name, image: r.image_url, price: r.price,
     })),
     myBusinesses: (mb.data || []).map(b => ({ id: b.id, name: b.name, logo: b.logo_url })),
+    levelCovers: Object.fromEntries((lc.data || []).filter(r => r.image_url).map(r => [r.id, r.image_url])),
   }
 }
 
 // ---------- tienda (banners gestionados por admin) ----------
 export const insertStoreItem = row => sb.from('store_items').insert(row)
 export const deleteStoreItem = id => sb.from('store_items').update({ active: false }).eq('id', id)
+
+// ---------- portadas por nivel (foto real gestionada por admin, reemplaza el dibujo vectorial) ----------
+export const upsertLevelCover = (id, imageUrl) =>
+  sb.from('level_covers').upsert({ id, image_url: imageUrl })
 
 // ---------- escrituras ----------
 // nota: is_admin NO se escribe desde el cliente (solo se controla en la BD).

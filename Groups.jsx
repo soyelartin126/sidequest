@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import * as db from './supabase.js'
 import { Bar, IconGlyph, CompanyBadge } from './ui.jsx'
 import { resizePhoto } from './utils.js'
-import { goalProgress, THEMES } from './game.js'
+import { goalProgress, goalDays, THEMES } from './game.js'
 
 export function Groups({ groups, profile, onOpen, onNotify, onChanged }) {
   const [mode, setMode] = useState(null) // null | create | join
@@ -195,7 +195,7 @@ export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify
               <div className="muted small">{q.freqPerWeek}x/semana · {q.weeks} semanas · meta {target} check-ins</div>
             )}
             {kind === 'reconocimiento' && (
-              <div className="muted small">Reconocimiento · el admin elige a quién premiar</div>
+              <div className="muted small">Reconocimiento · dura {goalDays(q)} días · el admin elige a quién premiar</div>
             )}
             {q.prize && <span className="chip">🎁 {q.prize}</span>}
             <div className="spacer" />
@@ -251,7 +251,7 @@ export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify
         )
       })}
 
-      {isAdmin && !form && <button onClick={() => setForm({ kind: 'constancia', title: '', freqPerWeek: 3, weeks: 2, targetNumber: '', unitLabel: '', prize: '', image: null })}>+ Nuevo reto del grupo</button>}
+      {isAdmin && !form && <button onClick={() => setForm({ kind: 'constancia', title: '', freqPerWeek: 3, weeks: 2, targetNumber: '', unitLabel: '', days: 30, prize: '', image: null })}>+ Nuevo reto del grupo</button>}
       {form && (
         <div className="card">
           <h3>Nuevo reto para {g.name}</h3>
@@ -279,6 +279,12 @@ export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify
               <input value={form.unitLabel} onChange={e => set('unitLabel', e.target.value)} placeholder="Ej: ventas, unidades" maxLength={30} />
             </>
           )}
+          {form.kind === 'reconocimiento' && (
+            <>
+              <label>Duración (días)</label>
+              <input type="number" min="1" value={form.days} onChange={e => set('days', e.target.value)} placeholder="Ej: 30" />
+            </>
+          )}
           <label>Premio (opcional)</label>
           <input value={form.prize} onChange={e => set('prize', e.target.value)} placeholder="Ej: Día libre, bono, entrada al cine" maxLength={60} />
           <label className="muted small">Imagen del premio (opcional)</label>
@@ -287,9 +293,10 @@ export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify
             if (f) set('image', await resizePhoto(f, 640))
           }} />
           {form.image && <img src={form.image} alt="" style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 120, objectFit: 'cover' }} />}
-          <button disabled={!form.title.trim() || (form.kind === 'numero' && !form.targetNumber) || busy} onClick={async () => {
+          <button disabled={!form.title.trim() || (form.kind === 'numero' && !form.targetNumber) || (form.kind === 'reconocimiento' && !form.days) || busy} onClick={async () => {
             setBusy(true)
-            const { data, error } = await db.insertQuest(profile.id, { ...form, groupId: g.id })
+            const payload = form.kind === 'reconocimiento' ? { ...form, weeks: (form.days || 0) / 7 } : form
+            const { data, error } = await db.insertQuest(profile.id, { ...payload, groupId: g.id })
             setBusy(false)
             if (error) onNotify(error.message)
             else {
