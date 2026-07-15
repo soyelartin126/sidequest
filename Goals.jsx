@@ -12,6 +12,7 @@ export function GoalCard({ g, onClick }) {
   const done = goalProgress(g)
   const perm = g.kind !== 'numero' && isPermanent(g)
   const reward = g.rewardItem && itemById(g.rewardItem)
+  const isEvitar = g.polarity === 'evitar'
   return (
     <div className="card" onClick={onClick} style={{ cursor: 'pointer' }}>
       {g.image && <img src={g.image} alt="" style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 110, objectFit: 'cover' }} />}
@@ -36,11 +37,12 @@ export function GoalCard({ g, onClick }) {
           })}
         </div>
       )}
+      {isEvitar && <div><span className="chip" style={{ background: '#7C5CBF', color: '#fff' }}>🚫 Hábito a dejar</span></div>}
       {g.prize && <div><span className="chip">🎁 {g.prize}</span></div>}
       {reward && <div><span className="chip"><ItemSprite id={reward.id} size={14} /> Botín: {reward.name}</span></div>}
       {canCheckinToday(g)
-        ? <div><span className="chip ok">Check-in pendiente hoy</span></div>
-        : g.status === 'active' && <div><span className="chip">✔ Hecho por hoy</span></div>}
+        ? <div><span className="chip ok">{isEvitar ? 'Día limpio pendiente' : 'Check-in pendiente hoy'}</span></div>
+        : g.status === 'active' && <div><span className="chip">{isEvitar ? '✔ Día limpio' : '✔ Hecho por hoy'}</span></div>}
     </div>
   )
 }
@@ -76,6 +78,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
   const [title, setTitle] = useState('')
   const [icon, setIcon] = useState(ICONS[0])
   const [kind, setKind] = useState('constancia')
+  const [polarity, setPolarity] = useState('hacer')
   const [targetNumber, setTargetNumber] = useState('')
   const [unitLabel, setUnitLabel] = useState('')
   const [prize, setPrize] = useState('')
@@ -90,6 +93,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
   const [freq, setFreq] = useState(3)
   const [durIdx, setDurIdx] = useState(5)
   const isNumero = kind === 'numero'
+  const isEvitar = !isNumero && polarity === 'evitar'
   // un reto numero siempre tiene meta (nunca "permanente"): se excluye esa opcion del slider
   const maxDurIdx = DURATIONS.length - 1 - (isNumero ? 1 : 0)
   const effDurIdx = Math.min(durIdx, maxDurIdx)
@@ -121,7 +125,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
       <div className="card">
         <label>¿Qué quieres lograr?</label>
         <input value={title} onChange={e => setTitle(e.target.value)}
-          placeholder="Ej: Ir al gym, leer 20 min, salir a trotar" maxLength={60} />
+          placeholder={isEvitar ? 'Ej: Dejar de fumar, no comprar comida chatarra' : 'Ej: Ir al gym, leer 20 min, salir a trotar'} maxLength={60} />
         <label>Ícono</label>
         <div className="icon-picker">
           {ICONS.map(ic => (
@@ -134,6 +138,15 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
           <option value="constancia">Constancia (check-ins periódicos)</option>
           <option value="numero">Número (avanzar hacia una meta, ej: ahorro, páginas, km)</option>
         </select>
+        {!isNumero && (
+          <>
+            <label>¿Construir o dejar un hábito?</label>
+            <div className="row">
+              <button type="button" className={polarity === 'hacer' ? '' : 'sec'} onClick={() => setPolarity('hacer')}>Construir un hábito</button>
+              <button type="button" className={polarity === 'evitar' ? '' : 'sec'} onClick={() => setPolarity('evitar')}>Dejar un hábito</button>
+            </div>
+          </>
+        )}
         {isNumero && (
           <>
             <label>Meta numérica</label>
@@ -211,7 +224,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
           <p className="muted small">Los retos permanentes no tienen botín de fin: te motivan con XP diario y tu racha.</p>
           <button disabled={!title.trim() || busy} onClick={async () => {
             setBusy(true)
-            await onCreate({ title: title.trim(), icon, skills, freqPerWeek: freq, weeks, rewardItem: null, prize: prize.trim() || null, image: prizeImage })
+            await onCreate({ title: title.trim(), icon, skills, freqPerWeek: freq, weeks, rewardItem: null, prize: prize.trim() || null, image: prizeImage, polarity })
           }}>{busy ? 'Creando…' : 'Crear reto permanente'}</button>
         </div>
       ) : (
@@ -238,7 +251,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
             setBusy(true)
             await onCreate({
               title: title.trim(), icon, skills, freqPerWeek: isNumero ? 7 : freq, weeks,
-              rewardItem: reward, prize: prize.trim() || null, image: prizeImage,
+              rewardItem: reward, prize: prize.trim() || null, image: prizeImage, polarity,
               ...(isNumero ? { kind: 'numero', targetNumber: +targetNumber, unitLabel: unitLabel.trim() } : {}),
             })
           }}>
@@ -256,6 +269,7 @@ export function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
   const isNumero = g.kind === 'numero'
+  const isEvitar = !isNumero && g.polarity === 'evitar'
   const t = goalTarget(g)
   const perm = !isNumero && isPermanent(g)
   const can = canCheckinToday(g)
@@ -273,7 +287,7 @@ export function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
           {perm && <span className="chip" style={{ background: '#3582DB', color: '#fff' }}>♾ Permanente</span>}
           <div className="spacer" />
           {perm ? (
-            <div className="muted small">{done} check-ins · {g.freqPerWeek === 7 ? 'todos los días' : `${g.freqPerWeek}x por semana`} · sin fecha de término</div>
+            <div className="muted small">{done} {isEvitar ? 'días limpio' : 'check-ins'} · {g.freqPerWeek === 7 ? 'todos los días' : `${g.freqPerWeek}x por semana`} · sin fecha de término</div>
           ) : isNumero ? (
             <>
               <Bar frac={done / t} />
@@ -282,7 +296,7 @@ export function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
           ) : (
             <>
               <Bar frac={done / t} />
-              <div className="muted small">{done} de {t} check-ins · {g.freqPerWeek}x por semana · {goalDays(g)} días</div>
+              <div className="muted small">{done} de {t} {isEvitar ? 'días limpio' : 'check-ins'} · {g.freqPerWeek}x por semana · {goalDays(g)} días</div>
             </>
           )}
         </div>
@@ -297,7 +311,7 @@ export function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
         </div>
       ) : (
         <div className="card">
-          <h3>{isNumero ? `Reporta tu avance de hoy` : 'Check-in de hoy'}</h3>
+          <h3>{isNumero ? 'Reporta tu avance de hoy' : isEvitar ? '¿Cómo va tu día?' : 'Check-in de hoy'}</h3>
           {can ? (
             <>
               {isNumero && (
@@ -316,16 +330,16 @@ export function GoalDetail({ goal: g, onBack, onCheckin, onRedeem, onDelete }) {
                 await onCheckin(g, note, file, isNumero ? (+value || 0) : null)
                 setNote(''); setFile(null); setValue(''); setBusy(false)
               }}>
-                {busy ? 'Guardando…' : `✔ Reportar avance (+${XP_CHECKIN} XP)`}
+                {busy ? 'Guardando…' : isEvitar ? `✔ Día limpio hoy (+${XP_CHECKIN} XP)` : `✔ Reportar avance (+${XP_CHECKIN} XP)`}
               </button>
             </>
-          ) : <p className="muted">Ya hiciste el check-in de hoy. Vuelve mañana 💪</p>}
+          ) : <p className="muted">{isEvitar ? 'Ya marcaste tu día limpio. Vuelve mañana 💪' : 'Ya hiciste el check-in de hoy. Vuelve mañana 💪'}</p>}
         </div>
       )}
 
       <h2>Historial</h2>
       <div className="card flat">
-        {g.checkins.length === 0 && <p className="muted">Aún no hay check-ins.</p>}
+        {g.checkins.length === 0 && <p className="muted">{isEvitar ? 'Aún no hay días limpio registrados.' : 'Aún no hay check-ins.'}</p>}
         {[...g.checkins].reverse().map((c, i) => (
           <div key={i} className="hist">
             {c.photo ? <img className="photo-thumb" src={c.photo} alt="" /> : <span style={{ fontSize: 20 }}>✔</span>}

@@ -20,6 +20,7 @@ const rowToGoal = r => ({
   redeemCode: r.redeem_code, redeemed: r.redeemed, userId: r.user_id,
   icon: r.meta?.icon || null, skills: r.meta?.skills || [],
   kind: r.kind || 'constancia', targetNumber: r.target_number ?? null, unitLabel: r.unit_label || '',
+  polarity: r.polarity || 'hacer',
   awardedTo: r.awarded_to || null, awardedAt: r.awarded_at || null,
   checkins: (r.checkins || [])
     .sort((a, b) => a.day.localeCompare(b.day))
@@ -34,6 +35,7 @@ const rowToQuest = r => ({
   businessId: r.business_id, comuna: r.comuna || [], capacity: r.capacity ?? null,
   startsAt: r.starts_at, endsAt: r.ends_at,
   kind: r.kind || 'constancia', targetNumber: r.target_number ?? null, unitLabel: r.unit_label || '',
+  polarity: r.polarity || 'hacer',
   awardedTo: r.awarded_to || null, awardedAt: r.awarded_at || null,
 })
 
@@ -117,6 +119,7 @@ export const insertGoal = (userId, g) => sb.from('goals').insert({
   reward_item: g.rewardItem || null, quest_id: g.questId || null,
   meta: { icon: g.icon || null, skills: g.skills || [] },
   kind: g.kind || 'constancia', target_number: g.targetNumber || null, unit_label: g.unitLabel || null,
+  polarity: g.polarity || 'hacer',
 }).select().single()
 
 export const deleteGoal = id => sb.from('goals').delete().eq('id', id)
@@ -141,6 +144,7 @@ export const insertQuest = (userId, q) => sb.from('quests').insert({
   business_id: q.businessId || null, comuna: q.comuna?.length ? q.comuna : null,
   capacity: q.capacity || null, starts_at: q.startsAt || null, ends_at: q.endsAt || null,
   kind: q.kind || 'constancia', target_number: q.targetNumber || null, unit_label: q.unitLabel || null,
+  polarity: q.polarity || 'hacer',
 }).select().single()
 
 export const awardRecognition = (questId, userId) =>
