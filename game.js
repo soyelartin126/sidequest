@@ -96,6 +96,23 @@ export const HP_LOSS_BOSS_HIT = 15
 export const ENERGY_MAX = 100
 export const ENERGY_COST_CHECKIN = 20
 
+// ---- Boss Fights: daño por golpe (cada golpe = un check-in) ----
+export const DAMAGE_PER_HIT = 10
+export const SPECIAL_HIT_EVERY = 3
+export const SPECIAL_MULTIPLIER = 2.5
+// info del golpe numero `hitIndex` (1-based, el checkins.length despues de
+// registrarlo): deterministico, sin azar - cada 3er golpe es especial
+export const hitInfo = hitIndex => {
+  const special = hitIndex > 0 && hitIndex % SPECIAL_HIT_EVERY === 0
+  return { damage: Math.round(DAMAGE_PER_HIT * (special ? SPECIAL_MULTIPLIER : 1)), special }
+}
+// daño total acumulado por alguien con `checkinsCount` golpes
+export const totalDamage = checkinsCount => {
+  let dmg = 0
+  for (let i = 1; i <= checkinsCount; i++) dmg += hitInfo(i).damage
+  return dmg
+}
+
 export const currentHp = avatar => avatar?.hp ?? HP_MAX
 // energia "vigente": si el dia guardado no es hoy, esta llena aunque no se
 // haya persistido el reset todavia (el reset real ocurre en el checkin)

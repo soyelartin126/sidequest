@@ -10,6 +10,7 @@ import { Quests, Redeem, Credits } from './Quests.jsx'
 import { Store } from './Store.jsx'
 import { Goals, NewGoal, GoalDetail } from './Goals.jsx'
 import { Groups, GroupDetail } from './Groups.jsx'
+import { BossFight } from './BossFight.jsx'
 import { IconGlyph, Backdrop } from './ui.jsx'
 import { resizePhoto } from './utils.js'
 import {
@@ -235,7 +236,16 @@ export default function App() {
     const g = groups.find(x => x.id === view.id)
     overlay = g && <GroupDetail group={g} profile={profile} goals={goals}
       quests={quests.filter(q => q.groupId === g.id)}
-      onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />
+      onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()}
+      onOpenBoss={q => setView({ name: 'boss', groupId: g.id, questId: q.id })} />
+  } else if (view?.name === 'boss') {
+    const g = groups.find(x => x.id === view.groupId)
+    const q = quests.find(x => x.id === view.questId)
+    const myGoal = goals.find(x => x.questId === view.questId)
+    overlay = g && q && <BossFight group={g} quest={q} profile={profile} myGoal={myGoal}
+      onBack={() => setView({ name: 'group', id: view.groupId })}
+      onCheckin={doCheckin} onNotify={notify} onChanged={() => refresh()}
+      onHpChange={newHp => db.saveProfile({ ...profile, avatar: { ...profile.avatar, hp: newHp } }).then(() => refresh())} />
   } else if (view?.name === 'admin') {
     overlay = <Admin quests={quests.filter(q => !q.groupId)} profile={profile} banners={banners} levelCovers={levelCovers}
       onBack={() => setView(null)} onNotify={notify} onChanged={() => refresh()} />

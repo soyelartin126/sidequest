@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import * as db from './supabase.js'
 import { Bar, IconGlyph, CompanyBadge } from './ui.jsx'
 import { resizePhoto } from './utils.js'
-import { goalProgress, goalDays, THEMES } from './game.js'
+import { goalProgress, goalDays, totalDamage, THEMES } from './game.js'
 
 export function Groups({ groups, profile, onOpen, onNotify, onChanged }) {
   const [mode, setMode] = useState(null) // null | create | join
@@ -80,7 +80,7 @@ export function Groups({ groups, profile, onOpen, onNotify, onChanged }) {
   )
 }
 
-export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onChanged }) {
+export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify, onChanged, onOpenBoss }) {
   const isAdmin = g.myRole === 'admin' || g.ownerId === profile.id
   const joined = new Set(goals.map(x => x.questId).filter(Boolean))
   const [form, setForm] = useState(null)
@@ -197,10 +197,56 @@ export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify
             {kind === 'reconocimiento' && (
               <div className="muted small">Reconocimiento · dura {goalDays(q)} días · el admin elige a quién premiar</div>
             )}
+            {kind === 'jefe' && (
+              <div className="muted small">HP del jefe: {q.targetNumber} · esquiva en {q.freqPerWeek}s</div>
+            )}
             {q.prize && <span className="chip">🎁 {q.prize}</span>}
             <div className="spacer" />
 
-            {kind === 'reconocimiento' ? (
+            {kind === 'jefe' ? (
+              (() => {
+                const bossDamage = rows.reduce((sum, r) => sum + totalDamage(r.checkins.length), 0)
+                const bossHp = Math.max(0, (q.targetNumber || 0) - bossDamage)
+                const ended = q.endsAt && new Date(q.endsAt).getTime() < Date.now()
+                if (q.awardedAt) {
+                  return (
+                    <div className="card flat center" style={{ marginBottom: 0 }}>
+                      <b>🏆 ¡Jefe derrotado!</b>
+                      {q.prize && <div className="muted small">{q.prize}</div>}
+                    </div>
+                  )
+                }
+                if (ended && bossHp > 0) {
+                  return <p className="muted small">El desafío terminó sin derrotar al jefe. ¡Buen intento, equipo! 💪</p>
+                }
+                return (
+                  <>
+                    <Bar frac={q.targetNumber ? bossHp / q.targetNumber : 0} />
+                    <div className="muted small">{bossHp}/{q.targetNumber} HP</div>
+                    {rows.length === 0 && <p className="muted small">Nadie se ha unido todavía.</p>}
+                    {rows.map((r, i) => (
+                      <div key={i} className="hist">
+                        <div className="grow"><b>{nameOf(r.userId)}</b></div>
+                        <span className="muted small">{r.checkins.length} golpes</span>
+                      </div>
+                    ))}
+                    <div className="spacer" />
+                    {joined.has(q.id) ? (
+                      <button onClick={() => onOpenBoss(q)}>⚔️ ¡Pelear!</button>
+                    ) : (
+                      <button disabled={busy} onClick={async () => {
+                        setBusy(true)
+                        await db.insertGoal(profile.id, {
+                          title: q.title, icon: q.icon, freqPerWeek: q.freqPerWeek, weeks: q.weeks, questId: q.id,
+                          kind: q.kind, targetNumber: q.targetNumber, unitLabel: q.unitLabel, prize: q.prize, image: q.image,
+                        })
+                        setBusy(false); onNotify('¡Te uniste a la pelea!'); onChanged()
+                      }}>Unirme a la pelea</button>
+                    )}
+                  </>
+                )
+              })()
+            ) : kind === 'reconocimiento' ? (
               q.awardedTo ? (
                 <div className="card flat center" style={{ marginBottom: 0 }}>
                   <b>🏆 {nameOf(q.awardedTo)}</b>
@@ -260,6 +306,7 @@ export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify
             <option value="constancia">Constancia (check-in periódico)</option>
             <option value="numero">Número / ranking (ej: ventas, unidades)</option>
             <option value="reconocimiento">Reconocimiento (ej: empleado del mes)</option>
+            <option value="jefe">Boss Fight (el equipo pelea junto contra un jefe)</option>
           </select>
           <label>Título</label>
           <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Ej: Todos al gym 3x esta semana" maxLength={60} />
@@ -285,6 +332,15 @@ export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify
               <input type="number" min="1" value={form.days} onChange={e => set('days', e.target.value)} placeholder="Ej: 30" />
             </>
           )}
+          {form.kind === 'jefe' && (
+            <>
+              <label>HP del jefe</label>
+              <input type="number" min="1" value={form.targetNumber} onChange={e => set('targetNumber', e.target.value)} placeholder="Ej: 500" />
+              <label>Segundos para esquivar sus ataques: {form.freqPerWeek}</label>
+              <input type="range" min="1" max="7" value={form.freqPerWeek} onChange={e => set('freqPerWeek', +e.target.value)} />
+              <p className="muted small">Menos segundos = jefe más difícil.</p>
+            </>
+          )}
           <label>Premio (opcional)</label>
           <input value={form.prize} onChange={e => set('prize', e.target.value)} placeholder="Ej: Día libre, bono, entrada al cine" maxLength={60} />
           <label className="muted small">Imagen del premio (opcional)</label>
@@ -293,7 +349,7 @@ export function GroupDetail({ group: g, profile, goals, quests, onBack, onNotify
             if (f) set('image', await resizePhoto(f, 640))
           }} />
           {form.image && <img src={form.image} alt="" style={{ width: '100%', borderRadius: 14, border: '1px solid #E6E9ED', marginBottom: 8, maxHeight: 120, objectFit: 'cover' }} />}
-          <button disabled={!form.title.trim() || (form.kind === 'numero' && !form.targetNumber) || (form.kind === 'reconocimiento' && !form.days) || busy} onClick={async () => {
+          <button disabled={!form.title.trim() || ((form.kind === 'numero' || form.kind === 'jefe') && !form.targetNumber) || (form.kind === 'reconocimiento' && !form.days) || busy} onClick={async () => {
             setBusy(true)
             const payload = form.kind === 'reconocimiento' ? { ...form, weeks: (form.days || 0) / 7 } : form
             const { data, error } = await db.insertQuest(profile.id, { ...payload, groupId: g.id })

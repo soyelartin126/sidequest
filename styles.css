@@ -345,3 +345,13 @@ label { font-size: 13px; font-weight: 700; }
 [data-theme="dark"] .suggest { border-color: #2A3A57; }
 [data-theme="dark"] .suggest.on { background: #2A2013; }
 [data-theme="dark"] .toggle { background: #33425E; }
+
+/* Boss Fight: shake simple al recibir un golpe (CSS puro, sin sprites) */
+@keyframes boss-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px) rotate(-2deg); }
+  40% { transform: translateX(8px) rotate(2deg); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+.boss-shake { animation: boss-shake 0.4s ease-in-out; }

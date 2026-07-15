@@ -150,6 +150,8 @@ export const insertQuest = (userId, q) => sb.from('quests').insert({
 export const awardRecognition = (questId, userId) =>
   sb.rpc('award_recognition', { p_quest_id: questId, p_user_id: userId })
 
+export const defeatBoss = questId => sb.rpc('defeat_boss', { p_quest_id: questId })
+
 export const sendTeamInvite = inviteId =>
   sb.functions.invoke('send-team-invite', { body: { inviteId } })
 
