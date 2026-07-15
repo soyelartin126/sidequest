@@ -83,9 +83,30 @@ export function skillStreak(goals, skillId) {
 // Se guardan dentro del jsonb `avatar`: avatar.shields (n) y avatar.frozenDays ([]).
 export const SHIELD_CAP = 3
 
+// ---- Vida y Energia (se guardan tambien en el jsonb `avatar`) ----
+// Vida: baja moderadamente cuando quedan dias sin check-in sin escudo que
+// los cubra: sube solo con seguir haciendo check-ins, nunca bloquea la app.
+export const HP_MAX = 100
+export const HP_GAIN_CHECKIN = 3
+export const HP_LOSS_MISSED_DAY = 10
+export const HP_LOSS_MAX_PER_REFRESH = 30
+export const HP_LOSS_BOSS_HIT = 15
+// Energia: limite suave de cuanto "avanzar" en un dia; se recarga sola cada
+// dia nuevo (via avatar.energyDay) y nunca bloquea el check-in en si.
+export const ENERGY_MAX = 100
+export const ENERGY_COST_CHECKIN = 20
+
+export const currentHp = avatar => avatar?.hp ?? HP_MAX
+// energia "vigente": si el dia guardado no es hoy, esta llena aunque no se
+// haya persistido el reset todavia (el reset real ocurre en el checkin)
+export const currentEnergy = avatar =>
+  avatar?.energyDay === dayKey() ? (avatar.energy ?? ENERGY_MAX) : ENERGY_MAX
+
 // Aplica escudos automaticamente para tapar los dias sin check-in entre el
 // ultimo avance y ayer, SOLO si alcanzan para cubrir todos (si no, no gasta).
-// Devuelve el avatar actualizado y cuantos escudos se usaron.
+// Si no alcanzan, esos dias sin cubrir bajan Vida (con tope por llamada,
+// para no golpear fuerte tras una ausencia larga). Devuelve el avatar
+// actualizado y cuantos escudos se usaron.
 export function applyShields(goals, avatar = {}) {
   let shields = avatar.shields ?? 1
   const frozen = new Set(avatar.frozenDays || [])
@@ -106,16 +127,19 @@ export function applyShields(goals, avatar = {}) {
   }
 
   let used = 0
+  let hp = currentHp(avatar)
   if (missed.length > 0 && missed.length <= shields) {
     missed.forEach(k => frozen.add(k))
     shields -= missed.length
     used = missed.length
+  } else if (missed.length > shields) {
+    hp = Math.max(0, hp - Math.min(missed.length * HP_LOSS_MISSED_DAY, HP_LOSS_MAX_PER_REFRESH))
   }
   // limpieza: no guardar dias congelados de hace mas de 90 dias
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 90)
   const cutKey = dayKey(cutoff)
   const kept = [...frozen].filter(k => k >= cutKey)
-  return { avatar: { ...avatar, shields, frozenDays: kept }, used }
+  return { avatar: { ...avatar, shields, hp, frozenDays: kept }, used }
 }
 
 // suma un escudo respetando el tope

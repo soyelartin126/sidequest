@@ -19,6 +19,7 @@ import {
   applyShields, addShield, backgroundStyle,
   COIN_CHECKIN, COIN_GOAL, COIN_QUEST, WELCOME_COINS,
   SKILL_XP_PER_CHECKIN, SKILL_STREAK_MILESTONE, SKILL_STREAK_BONUS_COINS, skillStreak, SKILLS,
+  HP_MAX, HP_GAIN_CHECKIN, ENERGY_COST_CHECKIN, currentHp, currentEnergy,
 } from './game.js'
 
 // animo del personaje/mascota segun estado del jugador
@@ -119,8 +120,17 @@ export default function App() {
     if (!canCheckinToday(goal)) return
     const photo = photoFile ? await resizePhoto(photoFile) : null
     await db.insertCheckin(profile.id, goal.id, { day: dayKey(), note, photo, value })
+    const avatarBefore = profile.avatar || {}
+    const energyBefore = currentEnergy(avatarBefore)
+    // sin Vida o sin Energia no se bloquea el check-in, solo rinde menos monedas
+    const coinMult = (currentHp(avatarBefore) <= 0 || energyBefore < ENERGY_COST_CHECKIN) ? 0.5 : 1
+    const coinGain = Math.round(COIN_CHECKIN * coinMult)
     const p = { ...profile, xp: profile.xp + XP_CHECKIN }
-    p.avatar = { ...(profile.avatar || {}), coins: (profile.avatar?.coins || 0) + COIN_CHECKIN }
+    p.avatar = {
+      ...avatarBefore, coins: (avatarBefore.coins || 0) + coinGain,
+      hp: Math.min(HP_MAX, currentHp(avatarBefore) + HP_GAIN_CHECKIN),
+      energy: Math.max(0, energyBefore - ENERGY_COST_CHECKIN), energyDay: dayKey(),
+    }
     const patchedGoals = goals.map(x => x.id === goal.id
       ? { ...x, checkins: [...x.checkins, { day: dayKey(), note, photo, value }] } : x)
     const skillMilestones = []
@@ -132,7 +142,7 @@ export default function App() {
         if (days > 0 && days % SKILL_STREAK_MILESTONE === 0) skillMilestones.push({ sid, days })
       })
       p.avatar.skills = skillsXp
-      if (skillMilestones.length > 0) p.avatar.coins = (p.avatar.coins || 0) + skillMilestones.length * SKILL_STREAK_BONUS_COINS
+      if (skillMilestones.length > 0) p.avatar.coins = (p.avatar.coins || 0) + Math.round(skillMilestones.length * SKILL_STREAK_BONUS_COINS * coinMult)
     }
     const willComplete = goalProgress(patchedGoals.find(x => x.id === goal.id)) >= goalTarget(goal)
     if (willComplete) {
@@ -140,12 +150,12 @@ export default function App() {
       if (goal.rewardItem && !p.items.includes(goal.rewardItem)) p.items = [...p.items, goal.rewardItem]
       const beforeSh = p.avatar.shields ?? 1
       p.avatar = addShield(p.avatar)
-      p.avatar.coins = (p.avatar.coins || 0) + (goal.sponsor ? COIN_QUEST : COIN_GOAL)
+      p.avatar.coins = (p.avatar.coins || 0) + Math.round((goal.sponsor ? COIN_QUEST : COIN_GOAL) * coinMult)
       await db.completeGoal({ ...goal, redeemCode: goal.sponsor ? makeRedeemCode() : null })
       notify(goal.sponsor ? `¡Reto completado! Tienes un canje en ${goal.sponsor}` : '¡Misión completada!')
       if (p.avatar.shields > beforeSh) setTimeout(() => notify('🛡 +1 escudo de racha'), 1400)
     } else {
-      notify(`Check-in listo · +${XP_CHECKIN} XP · +${COIN_CHECKIN} 🪙`)
+      notify(`Check-in listo · +${XP_CHECKIN} XP · +${coinGain} 🪙`)
     }
     if (skillMilestones.length > 0) {
       const allSkills = [...SKILLS, ...(profile.avatar?.customSkills || [])]

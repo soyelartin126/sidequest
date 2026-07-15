@@ -4,7 +4,7 @@ import Avatar, {
   GENDERS, SKIN_TONES, HAIR_STYLES, HAIR_COLORS,
 } from './Avatar.jsx'
 import { Bar, MiniBar, IconGlyph, CompanyBadge } from './ui.jsx'
-import { TIERS, ITEMS, SKILLS, skillLevel, skillStreak } from './game.js'
+import { TIERS, ITEMS, SKILLS, skillLevel, skillStreak, currentHp, currentEnergy, HP_MAX, ENERGY_MAX } from './game.js'
 
 export function SkillCard({ skill, xp, streakDays }) {
   const { level, progress } = skillLevel(xp)
@@ -26,6 +26,8 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], gr
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
   const curCover = profile.avatar?.cover || COVERS[0].id
   const allSkills = [...SKILLS, ...(profile.avatar?.customSkills || [])]
+  const hp = currentHp(profile.avatar)
+  const energy = currentEnergy(profile.avatar)
   const Sw = ({ colors, k }) => (
     <div className="swatches">
       {colors.map(c => (
@@ -54,7 +56,18 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], gr
         <span className="chip">Nivel {lvl.level} · {lvl.title}</span>
         {company && <CompanyBadge name={company.businessName} logo={company.businessLogo} />}
         <div className="muted small">
-          {profile.xp} XP · mejor racha: {profile.bestStreak || 0} días · {completed} misiones completadas
+          mejor racha: {profile.bestStreak || 0} días · {completed} misiones completadas
+        </div>
+        <div className="spacer" />
+        <div style={{ width: '100%', textAlign: 'left' }}>
+          <div className="muted small">❤️ Vida: {hp}/{HP_MAX}</div>
+          <Bar frac={hp / HP_MAX} />
+          <div className="muted small" style={{ marginTop: 8 }}>⚡ Energía: {energy}/{ENERGY_MAX}</div>
+          <Bar frac={energy / ENERGY_MAX} />
+          <div className="muted small" style={{ marginTop: 8 }}>
+            ✨ {profile.xp}{lvl.next ? ` / ${lvl.next.xp} XP` : ' XP · nivel máximo'}
+          </div>
+          <Bar frac={lvl.progress} />
         </div>
         <div className="spacer" />
         <button className="sec mini" onClick={() => setEditing(e => !e)}>
