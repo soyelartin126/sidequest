@@ -5,6 +5,7 @@ import Avatar, {
 } from './Avatar.jsx'
 import { Bar, MiniBar, IconGlyph, CompanyBadge } from './ui.jsx'
 import { TIERS, ITEMS, SKILLS, skillLevel, skillStreak, currentHp, currentEnergy, HP_MAX, ENERGY_MAX } from './game.js'
+import { generateShareCard, shareCard } from './share.js'
 
 export function SkillCard({ skill, xp, streakDays }) {
   const { level, progress } = skillLevel(xp)
@@ -19,8 +20,9 @@ export function SkillCard({ skill, xp, streakDays }) {
   )
 }
 
-function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], groups = [], levelCovers = {}, theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onCredits, onLogout }) {
+function Profile({ profile, lvl, stk = 0, earned, goals, mood = 'happy', banners = [], groups = [], levelCovers = {}, theme = 'light', onToggleTheme, onAvatar, onEquip, onAdmin, onCredits, onLogout }) {
   const [editing, setEditing] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const completed = goals.filter(g => g.status === 'completed').length
   const company = groups.find(g => g.businessName)
   const petColor = profile.avatar?.petColor ?? PET_COLORS[0]
@@ -70,9 +72,25 @@ function Profile({ profile, lvl, earned, goals, mood = 'happy', banners = [], gr
           <Bar frac={lvl.progress} />
         </div>
         <div className="spacer" />
-        <button className="sec mini" onClick={() => setEditing(e => !e)}>
-          {editing ? 'Listo' : <><IconGlyph icon="✏️" size={16} /> Editar personaje</>}
-        </button>
+        <div className="row" style={{ justifyContent: 'center' }}>
+          <button className="sec mini" onClick={() => setEditing(e => !e)}>
+            {editing ? 'Listo' : <><IconGlyph icon="✏️" size={16} /> Editar personaje</>}
+          </button>
+          <button className="sec mini" disabled={sharing} onClick={async () => {
+            setSharing(true)
+            try {
+              const blob = await generateShareCard({
+                avatar: profile.avatar, equipped: profile.equipped,
+                level: lvl.level, title: lvl.title, streak: stk,
+              })
+              await shareCard(blob)
+            } finally {
+              setSharing(false)
+            }
+          }}>
+            {sharing ? 'Generando…' : '📤 Compartir progreso'}
+          </button>
+        </div>
       </div>
 
       {editing && (

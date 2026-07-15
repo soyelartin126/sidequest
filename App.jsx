@@ -192,7 +192,7 @@ export default function App() {
     groups: <Groups groups={groups} profile={profile} onNotify={notify}
       onOpen={g => setView({ name: 'group', id: g.id })}
       onChanged={() => refresh()} />,
-    profile: <Profile profile={profile} lvl={lvl} earned={earned} goals={goals} mood={mood} banners={banners}
+    profile: <Profile profile={profile} lvl={lvl} stk={stk} earned={earned} goals={goals} mood={mood} banners={banners}
       groups={groups} levelCovers={levelCovers}
       theme={theme} onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
       onAvatar={async av => { await db.saveProfile({ ...profile, avatar: av }); refresh() }}
