@@ -89,13 +89,16 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
   const [newSkillIcon, setNewSkillIcon] = useState(ICONS[0])
   const [freq, setFreq] = useState(3)
   const [durIdx, setDurIdx] = useState(5)
-  const weeks = DURATIONS[durIdx].weeks
+  const isNumero = kind === 'numero'
+  // un reto numero siempre tiene meta (nunca "permanente"): se excluye esa opcion del slider
+  const maxDurIdx = DURATIONS.length - 1 - (isNumero ? 1 : 0)
+  const effDurIdx = Math.min(durIdx, maxDurIdx)
+  const weeks = DURATIONS[effDurIdx].weeks
   const permanent = weeks === 0
   const [reward, setReward] = useState(null)
   const [busy, setBusy] = useState(false)
   const tier = tierForDays(Math.round(weeks * 7))
-  const loot = eligibleLoot(freq, weeks, owned)
-  const isNumero = kind === 'numero'
+  const loot = eligibleLoot(isNumero ? 7 : freq, weeks, owned)
   if (reward && !loot.some(it => it.id === reward)) setReward(null)
   const prizeFields = (
     <>
@@ -171,49 +174,39 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
           <>
             <label>Frecuencia: {freq === 7 ? 'Todos los días' : `${freq} veces por semana`}</label>
             <input type="range" min="1" max="7" value={freq} onChange={e => setFreq(+e.target.value)} />
-            <label>Duración: {DURATIONS[durIdx].label}</label>
-            <input type="range" min="0" max={DURATIONS.length - 1} value={durIdx} onChange={e => setDurIdx(+e.target.value)} />
-            {permanent ? (
-              <p className="muted small">
-                ♾ Reto permanente · sin fecha de término · máximo 1 check-in por día. Suma XP y mantiene tu racha; no tiene premio de fin porque no termina.
+          </>
+        )}
+        <label>Duración: {DURATIONS[effDurIdx].label}</label>
+        <input type="range" min="0" max={maxDurIdx} value={effDurIdx} onChange={e => setDurIdx(+e.target.value)} />
+        {permanent ? (
+          <p className="muted small">
+            ♾ Reto permanente · sin fecha de término · máximo 1 check-in por día. Suma XP y mantiene tu racha; no tiene premio de fin porque no termina.
+          </p>
+        ) : (
+          <>
+            <p className="muted small">
+              {isNumero
+                ? <>Dificultad del botín según cuánto esperas demorarte:{' '}</>
+                : <>Meta total: {Math.max(1, Math.round(freq * weeks))} check-ins · máximo 1 por día · dificultad:{' '}</>}
+              <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
+            </p>
+            <div className="tier-legend">
+              <p className="muted small" style={{ margin: '0 0 8px' }}>
+                La dificultad depende de cuánto dura tu misión: mientras más larga, más difícil y mejor es el botín que puedes ganar.
               </p>
-            ) : (
-              <>
-                <p className="muted small">
-                  Meta total: {Math.max(1, Math.round(freq * weeks))} check-ins · máximo 1 por día · dificultad:{' '}
-                  <span className="chip" style={{ background: tier.color, color: '#fff' }}>{tier.name}</span>
-                </p>
-                <div className="tier-legend">
-                  <p className="muted small" style={{ margin: '0 0 8px' }}>
-                    La dificultad depende de cuántos días dura tu misión: mientras más larga, más difícil y mejor es el botín que puedes ganar.
-                  </p>
-                  {Object.entries(TIERS).map(([id, t]) => (
-                    <div key={id} className="tier-row">
-                      <span className="chip" style={{ background: t.color, color: '#fff', minWidth: 78, textAlign: 'center' }}>{t.name}</span>
-                      <span className="muted small">{t.maxDays === Infinity ? `${t.minDays}+ días` : `${t.minDays}–${t.maxDays} días`}</span>
-                    </div>
-                  ))}
+              {Object.entries(TIERS).map(([id, t]) => (
+                <div key={id} className="tier-row">
+                  <span className="chip" style={{ background: t.color, color: '#fff', minWidth: 78, textAlign: 'center' }}>{t.name}</span>
+                  <span className="muted small">{t.maxDays === Infinity ? `${t.minDays}+ días` : `${t.minDays}–${t.maxDays} días`}</span>
                 </div>
-              </>
-            )}
+              ))}
+            </div>
           </>
         )}
         {prizeFields}
       </div>
 
-      {isNumero ? (
-        <div className="card">
-          <button disabled={!title.trim() || !targetNumber || busy} onClick={async () => {
-            setBusy(true)
-            await onCreate({
-              title: title.trim(), icon, skills, kind: 'numero',
-              targetNumber: +targetNumber, unitLabel: unitLabel.trim(),
-              freqPerWeek: 1, weeks: 0, rewardItem: null,
-              prize: prize.trim() || null, image: prizeImage,
-            })
-          }}>{busy ? 'Creando…' : 'Crear misión'}</button>
-        </div>
-      ) : permanent ? (
+      {permanent ? (
         <div className="card">
           <p className="muted small">Los retos permanentes no tienen botín de fin: te motivan con XP diario y tu racha.</p>
           <button disabled={!title.trim() || busy} onClick={async () => {
@@ -227,7 +220,7 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
           <p className="muted small">
             Completa la misión y ganas el objeto. Misiones más largas e intensas desbloquean mejor botín.
           </p>
-          {loot.length === 0 && <p className="muted">Ya tienes todo el botín de este nivel. ¡Sube la duración o frecuencia!</p>}
+          {loot.length === 0 && <p className="muted">Ya tienes todo el botín de este nivel. ¡Sube la duración{!isNumero ? ' o frecuencia' : ''}!</p>}
           <div className="items">
             {loot.map(it => (
               <div key={it.id} className={'item' + (reward === it.id ? ' equipped' : '')}
@@ -241,9 +234,13 @@ export function NewGoal({ owned, customSkills = [], onAddSkill, onBack, onCreate
             ))}
           </div>
           <div className="spacer" />
-          <button disabled={!title.trim() || busy} onClick={async () => {
+          <button disabled={!title.trim() || busy || (isNumero && !targetNumber)} onClick={async () => {
             setBusy(true)
-            await onCreate({ title: title.trim(), icon, skills, freqPerWeek: freq, weeks, rewardItem: reward, prize: prize.trim() || null, image: prizeImage })
+            await onCreate({
+              title: title.trim(), icon, skills, freqPerWeek: isNumero ? 7 : freq, weeks,
+              rewardItem: reward, prize: prize.trim() || null, image: prizeImage,
+              ...(isNumero ? { kind: 'numero', targetNumber: +targetNumber, unitLabel: unitLabel.trim() } : {}),
+            })
           }}>
             {busy ? 'Creando…' : reward ? `Crear misión (botín: ${itemById(reward).name})` : 'Crear misión sin botín'}
           </button>
